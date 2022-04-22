@@ -2,7 +2,7 @@
  * @Author: LingZichao
  * @Date: 2022-04-21 02:33:04
  * @LastEditors: LingZichao
- * @LastEditTime: 2022-04-21 08:39:22
+ * @LastEditTime: 2022-04-22 08:39:24
  * @FilePath: /SuzuranOC/README.md
  * @Description: 
  * 
@@ -15,6 +15,13 @@ __铃兰小姐是我们的光!__
 这个简单轻松的resp就记录一下,我是如何克服 ~~Synax error~~ 的吧
 
 ---
+
+### day1
+OK 稍微搞懂了一些`testbench`常用的函数，一方面感觉不少语法和C真的很像，另一方面为什么`Verilog`没有像`C语言`一样丰富的手册呢(当然感谢知乎上的大佬) ，~~令人感叹~~。基于这些`verilog`的`system call` ， 使用外部文件算是模拟了`DRAM/ROM`存储器了。
+
+指令系统部分大概看了一下MIPS和CQU提供的手册，感觉和RISC-V类似，但是译码阶段和看过的tinyriscv中疯狂IF-ELSE的方式有点区别，这点可能得去看一下课程视频
+
+CSAPP , YYDS!
 
 ### day0 
 开始搞`testbench`,并且意识到寒假刷的`vlab`已经全部遗忘了（现在被窝里全是C++）.
