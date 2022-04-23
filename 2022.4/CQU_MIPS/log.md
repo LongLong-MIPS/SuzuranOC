@@ -2,7 +2,7 @@
  * @Author: LingZichao
  * @Date: 2022-04-21 08:37:17
  * @LastEditors: LingZichao
- * @LastEditTime: 2022-04-23 08:51:53
+ * @LastEditTime: 2022-04-23 09:15:52
  * @FilePath: /SuzuranOC/2022.4/CQU_MIPS/log.md
  * @Description: 
  * 
@@ -27,3 +27,5 @@ lab2 :
 * 遇到了一个`Ports cannot be unpacked arrays` , verilog 中压缩数组和解压缩数组的区别参考下面
 	http://www.asic-world.com/systemverilog/data_types10.html
 * 善于使用{}运算符简化程序,避免大量IF-ELSE
+* 一个疑问：为什么PC要设计成异步复位寄存器(?猜想:和程序的装载有关)
+* 注意依赖时序的部分:PC/REG FILE/DATA MEMORY , 对应取指，，访存，写回
