@@ -2,7 +2,7 @@
  * @Author: LingZichao
  * @Date: 2022-04-21 08:37:17
  * @LastEditors: LingZichao
- * @LastEditTime: 2022-04-22 08:01:04
+ * @LastEditTime: 2022-04-23 08:51:53
  * @FilePath: /SuzuranOC/2022.4/CQU_MIPS/log.md
  * @Description: 
  * 
@@ -23,3 +23,7 @@ lab2 :
 	The content read only includes: blank spaces (spaces, line feeds, tabs and form-feeds), comment lines, binary or hexadecimal numbers.
 
 	http://www.referencedesigner.com/tutorials/verilog
+
+* 遇到了一个`Ports cannot be unpacked arrays` , verilog 中压缩数组和解压缩数组的区别参考下面
+	http://www.asic-world.com/systemverilog/data_types10.html
+* 善于使用{}运算符简化程序,避免大量IF-ELSE

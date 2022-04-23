@@ -3,9 +3,9 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 2015/09/25 10:35:04
+// Create Date: 2017/11/02 14:25:38
 // Design Name: 
-// Module Name: top
+// Module Name: adder
 // Project Name: 
 // Target Devices: 
 // Tool Versions: 
@@ -20,16 +20,10 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module top(
-    input clk,
-    input rst,
-    input [2:0] op,
-    input [7:0] num1,
-    output [7:0] ans,
-    output [6:0] seg
+module adder(
+	input wire[31:0] a,b,
+	output wire[31:0] y
     );
-    wire [31:0] s;
-    calculate U1(.num1(num1),.op(op),.result(s));
-    
-    display U2(.clk(clk),.reset(rst),.s(s),.ans(ans),.seg(seg));
+
+	assign y = a + b;
 endmodule

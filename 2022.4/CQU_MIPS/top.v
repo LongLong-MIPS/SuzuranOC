@@ -3,7 +3,7 @@
 // Company: 
 // Engineer: 
 // 
-// Create Date: 2015/09/25 10:35:04
+// Create Date: 2017/11/07 13:50:53
 // Design Name: 
 // Module Name: top
 // Project Name: 
@@ -21,15 +21,14 @@
 
 
 module top(
-    input clk,
-    input rst,
-    input [2:0] op,
-    input [7:0] num1,
-    output [7:0] ans,
-    output [6:0] seg
+	input wire clk,rst,
+	output wire[31:0] writedata,dataadr,
+	output wire memwrite
     );
-    wire [31:0] s;
-    calculate U1(.num1(num1),.op(op),.result(s));
-    
-    display U2(.clk(clk),.reset(rst),.s(s),.ans(ans),.seg(seg));
+
+	wire[31:0] pc,instr,readdata;
+
+	mips mips(clk,rst,pc,instr,memwrite,dataadr,writedata,readdata);
+	inst_mem imem(clk,pc[7:2],instr);
+	data_mem dmem(~clk,memwrite,dataadr,writedata,readdata);
 endmodule
