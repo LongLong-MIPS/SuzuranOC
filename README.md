@@ -1,5 +1,7 @@
 
 # SuzuranOC
+![avatar](https://badgen.net/badge/Language/Verilog/orange)
+![avatar](https://badgen.net/badge/State/Preparing/blue)
 
 __铃兰小姐是我们的光!__
 
