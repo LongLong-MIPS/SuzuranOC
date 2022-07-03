@@ -10,17 +10,20 @@ object Control {
   val N = false.B
 
   // pc_sel
+  // 决定下一条指令的方式
   val PC_4 = 0.U(2.W)
   val PC_ALU = 1.U(2.W)
   val PC_0 = 2.U(2.W)
   val PC_EPC = 3.U(2.W)
 
   // A_sel
+  // ALU A端口的数据来源
   val A_XXX = 0.U(1.W)
   val A_PC = 0.U(1.W)
   val A_RS1 = 1.U(1.W)
 
   // B_sel
+  // ALU B端口的数据来源
   val B_XXX = 0.U(1.W)
   val B_IMM = 0.U(1.W)
   val B_RS2 = 1.U(1.W)

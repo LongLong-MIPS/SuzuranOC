@@ -6,12 +6,13 @@ import chisel3._
 import chisel3.util._
 import chisel3.experimental.BundleLiterals._
 
+// 定义起始地址
 object Const {
   val PC_START = 0x200
   val PC_EVEC = 0x100
 }
 
-// Flipped() 把原本Output的端口变换为Input
+// Flipped() 把原本Output的端口变换为Input , 反之亦然
 // 数据通路的IO , ctrl为整个通路的控制信号
 class DatapathIO(xlen: Int) extends Bundle {
   val host = new HostIO(xlen)
@@ -83,11 +84,12 @@ class Datapath(val conf: CoreConfig) extends Module {
   val pc_check = Reg(Bool())
 
   /** **** Fetch ****
+    * 包括PC等电路
     */
   val started = RegNext(reset.asBool)
   // stall : stop signal——停机信号 暂停流水线
   val stall = !io.icache.resp.valid || !io.dcache.resp.valid
-  val pc = RegInit(Const.PC_START.U(conf.xlen.W) - 4.U(conf.xlen.W))
+  val pc = RegInit(Const.PC_START.U(conf.xlen.W) - 4.U(conf.xlen.W)) //注意Line.116 icache连接的是next_pc
   // Next Program Counter
   val next_pc = MuxCase(
     pc + 4.U,
@@ -108,7 +110,9 @@ class Datapath(val conf: CoreConfig) extends Module {
     * (4) CSR
   */
   val inst =
-    Mux(started || io.ctrl.inst_kill || brCond.io.taken || csr.io.expt, Instructions.NOP, io.icache.resp.bits.data)
+    Mux(started || io.ctrl.inst_kill || brCond.io.taken || csr.io.expt,
+      Instructions.NOP,
+      io.icache.resp.bits.data) // response 通道
   pc := next_pc
   io.icache.req.bits.addr := next_pc
   io.icache.req.bits.data := 0.U
@@ -233,6 +237,9 @@ class Datapath(val conf: CoreConfig) extends Module {
   csr.io.st_type := st_type
   io.host <> csr.io.host
 
+  /**
+    *  *** Write Back ***
+    */
   // Regfile Write
   val regWrite =
     MuxLookup(
@@ -245,7 +252,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   regFile.io.waddr := wb_rd_addr
   regFile.io.wdata := regWrite
 
-  // Abort store when there's an excpetion
+  // Abort store when there's an exception
   io.dcache.abort := csr.io.expt
 
   // TODO: re-enable through AOP

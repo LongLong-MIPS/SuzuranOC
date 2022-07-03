@@ -5,6 +5,7 @@ package mini
 import chisel3._
 import chisel3.util.Valid
 
+// 样例类，用于配置参数
 case class CoreConfig(
   xlen:       Int,
   makeAlu:    Int => Alu = new AluSimple(_),
@@ -17,6 +18,7 @@ class HostIO(xlen: Int) extends Bundle {
   val tohost = Output(UInt(xlen.W))
 }
 
+// host为总线相关接口
 // 注意这里又反转了一次
 // resp为输入信号 req为输出
 class CoreIO(xlen: Int) extends Bundle {
@@ -25,6 +27,7 @@ class CoreIO(xlen: Int) extends Bundle {
   val dcache = Flipped(new CacheIO(xlen, xlen))
 }
 
+// Core声明
 class Core(val conf: CoreConfig) extends Module {
   val io = IO(new CoreIO(conf.xlen))
   val dpath = Module(new Datapath(conf))
