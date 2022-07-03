@@ -11,7 +11,8 @@ class ImmGenIO(xlen: Int) extends Bundle {
   val sel = Input(UInt(3.W))
   val out = Output(UInt(xlen.W))
 }
-
+// 立即数生成模块, RISC-V的立即数是分散的,
+// 需要按照一定规则组合起来
 trait ImmGen extends Module {
   def xlen: Int
   val io: ImmGenIO

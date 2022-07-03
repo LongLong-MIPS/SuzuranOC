@@ -15,19 +15,21 @@ class AluTester(alu: => Alu) extends BasicTester with TestUtils {
   val ctrl = Module(new Control)
   val xlen = dut.width
 
+
+  // Counter() 第一个参数表示计数器的值,第二个表示电路的状态是否完成本周期计数
   val (cntr, done) = Counter(true.B, insts.size)
-  val rs1 = Seq.fill(insts.size)(rnd.nextInt()).map(toBigInt)
-  val rs2 = Seq.fill(insts.size)(rnd.nextInt()).map(toBigInt)
-  val sum = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt + b.toInt).U(xlen.W) })
-  val diff = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt - b.toInt).U(xlen.W) })
-  val and = VecInit(rs1.zip(rs2).map { case (a, b) => (a & b).U(xlen.W) })
-  val or = VecInit(rs1.zip(rs2).map { case (a, b) => (a | b).U(xlen.W) })
-  val xor = VecInit(rs1.zip(rs2).map { case (a, b) => (a ^ b).U(xlen.W) })
-  val slt = VecInit(rs1.zip(rs2).map { case (a, b) => (if (a.toInt < b.toInt) 1 else 0).U(xlen.W) })
-  val sltu = VecInit(rs1.zip(rs2).map { case (a, b) => (if (a < b) 1 else 0).U(xlen.W) })
-  val sll = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt << (b.toInt & 0x1f)).U(xlen.W) })
-  val srl = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt >>> (b.toInt & 0x1f)).U(xlen.W) })
-  val sra = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt >> (b.toInt & 0x1f)).U(xlen.W) })
+  val rs1   = Seq.fill(insts.size)(rnd.nextInt()).map(toBigInt)
+  val rs2   = Seq.fill(insts.size)(rnd.nextInt()).map(toBigInt)
+  val sum   = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt + b.toInt).U(xlen.W) })
+  val diff  = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt - b.toInt).U(xlen.W) })
+  val and   = VecInit(rs1.zip(rs2).map { case (a, b) => (a & b).U(xlen.W) })
+  val or    = VecInit(rs1.zip(rs2).map { case (a, b) => (a | b).U(xlen.W) })
+  val xor   = VecInit(rs1.zip(rs2).map { case (a, b) => (a ^ b).U(xlen.W) })
+  val slt   = VecInit(rs1.zip(rs2).map { case (a, b) => (if (a.toInt < b.toInt) 1 else 0).U(xlen.W) })
+  val sltu  = VecInit(rs1.zip(rs2).map { case (a, b) => (if (a < b) 1 else 0).U(xlen.W) })
+  val sll   = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt << (b.toInt & 0x1f)).U(xlen.W) })
+  val srl   = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt >>> (b.toInt & 0x1f)).U(xlen.W) })
+  val sra   = VecInit(rs1.zip(rs2).map { case (a, b) => toBigInt(a.toInt >> (b.toInt & 0x1f)).U(xlen.W) })
   val out = (
     Mux(
       dut.io.alu_op === ALU_ADD,

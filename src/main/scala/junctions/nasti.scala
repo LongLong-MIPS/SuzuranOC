@@ -47,15 +47,15 @@ case class NastiBundleParameters(
 
 /** aka the AW/AR channel */
 class NastiAddressBundle(params: NastiBundleParameters) extends Bundle {
-  val id = UInt(params.idBits.W)
-  val addr = UInt(params.addrBits.W)
-  val len = UInt(NastiConstants.LenBits.W) // number of beats - 1
-  val size = UInt(NastiConstants.SizeBits.W) // bytes in beat = 2^size
+  val id    = UInt(params.idBits.W)
+  val addr  = UInt(params.addrBits.W)
+  val len   = UInt(NastiConstants.LenBits.W) // number of beats - 1
+  val size  = UInt(NastiConstants.SizeBits.W) // bytes in beat = 2^size
   val burst = UInt(NastiConstants.BurstBits.W)
-  val lock = UInt(NastiConstants.LockBits.W)
+  val lock  = UInt(NastiConstants.LockBits.W)
   val cache = UInt(NastiConstants.CacheBits.W)
-  val prot = UInt(NastiConstants.ProtBits.W)
-  val qos = UInt(NastiConstants.QosBits.W) // 0=no QoS, bigger = higher priority
+  val prot  = UInt(NastiConstants.ProtBits.W)
+  val qos   = UInt(NastiConstants.QosBits.W) // 0=no QoS, bigger = higher priority
 }
 
 object NastiAddressBundle {

@@ -9,13 +9,16 @@ case class CoreConfig(
   xlen:       Int,
   makeAlu:    Int => Alu = new AluSimple(_),
   makeBrCond: Int => BrCond = new BrCondSimple(_),
-  makeImmGen: Int => ImmGen = new ImmGenWire(_))
+  makeImmGen: Int => ImmGen = new ImmGenWire(_)
+)
 
 class HostIO(xlen: Int) extends Bundle {
   val fromhost = Flipped(Valid(UInt(xlen.W)))
   val tohost = Output(UInt(xlen.W))
 }
 
+// 注意这里又反转了一次
+// resp为输入信号 req为输出
 class CoreIO(xlen: Int) extends Bundle {
   val host = new HostIO(xlen)
   val icache = Flipped(new CacheIO(xlen, xlen))

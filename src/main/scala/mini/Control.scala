@@ -57,7 +57,8 @@ object Control {
   val LD_LHU = 4.U(3.W)
   val LD_LBU = 5.U(3.W)
 
-  // wb_sel
+  // wb_sel 寄存器组写入信号
+  // 选择写入对应寄存器的数据来源
   val WB_ALU = 0.U(2.W)
   val WB_MEM = 1.U(2.W)
   val WB_PC4 = 2.U(2.W)
@@ -126,7 +127,11 @@ object Control {
 }
 
 class ControlSignals extends Bundle {
+  // 输出IR中的指令
   val inst = Input(UInt(32.W))
+
+
+  // 硬布线,输出信号
   val pc_sel = Output(UInt(2.W))
   val inst_kill = Output(Bool())
   val A_sel = Output(UInt(1.W))

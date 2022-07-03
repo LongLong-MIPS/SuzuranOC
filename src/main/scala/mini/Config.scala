@@ -6,6 +6,7 @@ import junctions.NastiBundleParameters
 
 case class Config(core: CoreConfig, cache: CacheConfig, nasti: NastiBundleParameters)
 
+// 配置参数MINI-CPU核的参数
 object MiniConfig {
   def apply(): Config = {
     val xlen = 32

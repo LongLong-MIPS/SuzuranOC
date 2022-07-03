@@ -29,7 +29,7 @@ class MemArbiter(params: NastiBundleParameters) extends Module {
   io.dcache.aw.ready := io.nasti.aw.ready && state === sIdle
   io.icache.aw := DontCare
 
-  // Write Data
+  // Write mini.Data
   io.nasti.w.bits := io.dcache.w.bits
   io.nasti.w.valid := io.dcache.w.valid && state === sDCacheWrite
   io.dcache.w.ready := io.nasti.w.ready && state === sDCacheWrite
@@ -53,7 +53,7 @@ class MemArbiter(params: NastiBundleParameters) extends Module {
   io.dcache.ar.ready := io.nasti.ar.ready && !io.nasti.aw.valid && state === sIdle
   io.icache.ar.ready := io.dcache.ar.ready && !io.dcache.ar.valid
 
-  // Read Data
+  // Read mini.Data
   io.icache.r.bits := io.nasti.r.bits
   io.dcache.r.bits := io.nasti.r.bits
   io.icache.r.valid := io.nasti.r.valid && state === sICacheRead

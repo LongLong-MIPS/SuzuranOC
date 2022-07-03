@@ -11,6 +11,8 @@ object Const {
   val PC_EVEC = 0x100
 }
 
+// Flipped() 把原本Output的端口变换为Input
+// 数据通路的IO , ctrl为整个通路的控制信号
 class DatapathIO(xlen: Int) extends Bundle {
   val host = new HostIO(xlen)
   val icache = Flipped(new CacheIO(xlen, xlen))
@@ -18,11 +20,13 @@ class DatapathIO(xlen: Int) extends Bundle {
   val ctrl = Flipped(new ControlSignals)
 }
 
+// 定义取指和执行流水线级之间的寄存器io,仅仅是为了方便寄存器定义
 class FetchExecutePipelineRegister(xlen: Int) extends Bundle {
   val inst = chiselTypeOf(Instructions.NOP)
   val pc = UInt(xlen.W)
 }
 
+// 定义执行和写回流水线级之间的寄存器io
 class ExecuteWritebackPipelineRegister(xlen: Int) extends Bundle {
   val inst = chiselTypeOf(Instructions.NOP)
   val pc = UInt(xlen.W)
@@ -30,8 +34,11 @@ class ExecuteWritebackPipelineRegister(xlen: Int) extends Bundle {
   val csr_in = UInt(xlen.W)
 }
 
+// 定义数据通路的模块 , 状态寄存器 寄存器组 ALU
+// 立即数组合器(RISC-V中的立即数需要拼凑)
 class Datapath(val conf: CoreConfig) extends Module {
   val io = IO(new DatapathIO(conf.xlen))
+
   val csr = Module(new CSR(conf.xlen))
   val regFile = Module(new RegFile(conf.xlen))
   val alu = Module(conf.makeAlu(conf.xlen))
@@ -43,6 +50,9 @@ class Datapath(val conf: CoreConfig) extends Module {
   /** Pipeline State Registers * */
 
   /** *** Fetch / Execute Registers ****
+    *
+    * 把多个寄存器合并为一个寄存器 , lit()为语法糖 , 表示了这个
+    * Bundle接口的初始值
     */
   val fe_reg = RegInit(
     (new FetchExecutePipelineRegister(conf.xlen)).Lit(
@@ -64,17 +74,18 @@ class Datapath(val conf: CoreConfig) extends Module {
 
   /** **** Control signals ****
     */
-  val st_type = Reg(io.ctrl.st_type.cloneType)
-  val ld_type = Reg(io.ctrl.ld_type.cloneType)
-  val wb_sel = Reg(io.ctrl.wb_sel.cloneType)
-  val wb_en = Reg(Bool())
-  val csr_cmd = Reg(io.ctrl.csr_cmd.cloneType)
-  val illegal = Reg(Bool())
+  val st_type  = Reg(io.ctrl.st_type.cloneType)
+  val ld_type  = Reg(io.ctrl.ld_type.cloneType)
+  val wb_sel   = Reg(io.ctrl.wb_sel.cloneType)
+  val wb_en    = Reg(Bool())
+  val csr_cmd  = Reg(io.ctrl.csr_cmd.cloneType)
+  val illegal  = Reg(Bool())
   val pc_check = Reg(Bool())
 
   /** **** Fetch ****
     */
   val started = RegNext(reset.asBool)
+  // stall : stop signal——停机信号 暂停流水线
   val stall = !io.icache.resp.valid || !io.dcache.resp.valid
   val pc = RegInit(Const.PC_START.U(conf.xlen.W) - 4.U(conf.xlen.W))
   // Next Program Counter
@@ -88,6 +99,14 @@ class Datapath(val conf: CoreConfig) extends Module {
       (io.ctrl.pc_sel === PC_0) -> pc
     )
   )
+
+  /** 从icache中取指部分的电路
+    * 为了解决冒险问题 , 在下面四种情况下要进行填充NOP
+    * (1) 系统启动或reset时
+    * (2) 解决load-use冒险问题 或者 CSR相关
+    * (3) 执行跳转指令时:控制冒险
+    * (4) CSR
+  */
   val inst =
     Mux(started || io.ctrl.inst_kill || brCond.io.taken || csr.io.expt, Instructions.NOP, io.icache.resp.bits.data)
   pc := next_pc
@@ -119,11 +138,28 @@ class Datapath(val conf: CoreConfig) extends Module {
   immGen.io.sel := io.ctrl.imm_sel
 
   // bypass
+  /**
+    *  *** Data Wizard ***
+    *  https://zhuanlan.zhihu.com/p/447682231
+    *
+    * (1) RAW(Read After Write) <- THIS ONE !
+    *     add x5*, x4, x6
+    *     add x4, x5*, x2
+    *
+    * (2) WAW(write after write)  (Out-Of-Order)
+    *     add x5*, x4, x6
+    *     add x5*, x3, x2
+    *
+    * (3) WAR(write after read) (Out-Of-Order)
+    *     add x5, x4*, x6
+    *     add x4*, x3, x2
+    */
   val wb_rd_addr = ew_reg.inst(11, 7)
   val rs1hazard = wb_en && rs1_addr.orR && (rs1_addr === wb_rd_addr)
   val rs2hazard = wb_en && rs2_addr.orR && (rs2_addr === wb_rd_addr)
   val rs1 = Mux(wb_sel === WB_ALU && rs1hazard, ew_reg.alu, regFile.io.rdata1)
   val rs2 = Mux(wb_sel === WB_ALU && rs2hazard, ew_reg.alu, regFile.io.rdata2)
+  // e.g. load + add https://www.cnblogs.com/houhaibushihai/p/9737442.html
 
   // ALU operations
   alu.io.A := Mux(io.ctrl.A_sel === A_RS1, rs1, fe_reg.pc)
@@ -170,6 +206,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   }
 
   // Load
+  // 对load取出的数据进行修改(位扩展)
   val loffset = (ew_reg.alu(1) << 4.U).asUInt | (ew_reg.alu(0) << 3.U).asUInt
   val lshift = io.dcache.resp.bits.data >> loffset
   val load = MuxLookup(

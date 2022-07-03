@@ -3,24 +3,27 @@
 package mini
 
 import chisel3._
+import chisel3.experimental.ChiselEnum
 import chisel3.util._
 
-object Alu {
-  val ALU_ADD = 0.U(4.W)
-  val ALU_SUB = 1.U(4.W)
-  val ALU_AND = 2.U(4.W)
-  val ALU_OR = 3.U(4.W)
-  val ALU_XOR = 4.U(4.W)
-  val ALU_SLT = 5.U(4.W)
-  val ALU_SLL = 6.U(4.W)
-  val ALU_SLTU = 7.U(4.W)
-  val ALU_SRL = 8.U(4.W)
-  val ALU_SRA = 9.U(4.W)
+// 类比枚举enum类型, 记录了Alu各个运算的操作码
+object Alu extends ChiselEnum {
+  val ALU_ADD   = 0.U(4.W)
+  val ALU_SUB   = 1.U(4.W)
+  val ALU_AND   = 2.U(4.W)
+  val ALU_OR    = 3.U(4.W)
+  val ALU_XOR   = 4.U(4.W)
+  val ALU_SLT   = 5.U(4.W)
+  val ALU_SLL   = 6.U(4.W)
+  val ALU_SLTU  = 7.U(4.W)
+  val ALU_SRL   = 8.U(4.W)
+  val ALU_SRA   = 9.U(4.W)
   val ALU_COPY_A = 10.U(4.W)
   val ALU_COPY_B = 11.U(4.W)
-  val ALU_XXX = 15.U(4.W)
+  val ALU_XXX    = 15.U(4.W)
 }
 
+// AluIO的数据Bundle
 class AluIO(width: Int) extends Bundle {
   val A = Input(UInt(width.W))
   val B = Input(UInt(width.W))
@@ -31,16 +34,22 @@ class AluIO(width: Int) extends Bundle {
 
 import mini.Alu._
 
+// 抽象类 , 定义了Alu的接口
 trait Alu extends Module {
   def width: Int
   val io: AluIO
 }
 
+// ALU1 : 先确定Alu操作数,再进行相应的运算,再输出
 class AluSimple(val width: Int) extends Alu {
   val io = IO(new AluIO(width))
 
+  // shamt 用于位移指令的操作数
   val shamt = io.B(4, 0).asUInt
 
+  // MuxLookUp(idx , default , Seq(..) )
+  // 根据idx匹配Seq里的对应值, 类比switch ;
+  // 如果都不匹配 , 则输出default值
   io.out := MuxLookup(
     io.alu_op,
     io.B,
@@ -62,11 +71,15 @@ class AluSimple(val width: Int) extends Alu {
   io.sum := io.A + Mux(io.alu_op(0), -io.B, io.B)
 }
 
+// Alu2 : 再选择Alu操作数的时候同时运算,最后根据结果选择输出
 class AluArea(val width: Int) extends Alu {
   val io = IO(new AluIO(width))
   val sum = io.A + Mux(io.alu_op(0), -io.B, io.B)
+
+  //
   val cmp =
-    Mux(io.A(width - 1) === io.B(width - 1), sum(width - 1), Mux(io.alu_op(1), io.B(width - 1), io.A(width - 1)))
+    Mux(io.A(width - 1) === io.B(width - 1), sum(width - 1),
+      Mux(io.alu_op(1), io.B(width - 1), io.A(width - 1)))
   val shamt = io.B(4, 0).asUInt
   val shin = Mux(io.alu_op(3), io.A, Reverse(io.A))
   val shiftr = (Cat(io.alu_op(0) && shin(width - 1), shin).asSInt >> shamt)(width - 1, 0)

@@ -7,22 +7,31 @@ import chisel3.experimental.ChiselEnum
 import chisel3.util._
 import junctions._
 
+// AXI4协议的Cache实现 https://www.bilibili.com/video/BV1364y117ZB
+// Cache Require
+// 用来表示dataW中那些字节时无效的
 class CacheReq(addrWidth: Int, dataWidth: Int) extends Bundle {
   val addr = UInt(addrWidth.W)
   val data = UInt(dataWidth.W)
   val mask = UInt((dataWidth / 8).W)
 }
-
+// Cache Response
+// 用来返回写入是否成功
 class CacheResp(dataWidth: Int) extends Bundle {
   val data = UInt(dataWidth.W)
 }
 
+// 一些关于Valid() 的API介绍
+// *** 注意关于bit用法 , 默认为Output() ***
+// https://www.chisel-lang.org/api/3.5.3/chisel3/util/Valid$.html
 class CacheIO(addrWidth: Int, dataWidth: Int) extends Bundle {
   val abort = Input(Bool())
   val req = Flipped(Valid(new CacheReq(addrWidth, dataWidth)))
   val resp = Valid(new CacheResp(dataWidth))
 }
 
+// CPU <> Cache <> Memory
+//   CPU-IO   NASTI-IO
 class CacheModuleIO(nastiParams: NastiBundleParameters, addrWidth: Int, dataWidth: Int) extends Bundle {
   val cpu = new CacheIO(addrWidth, dataWidth)
   val nasti = new NastiBundle(nastiParams)
@@ -38,14 +47,15 @@ object CacheState extends ChiselEnum {
   val sIdle, sReadCache, sWriteCache, sWriteBack, sWriteAck, sRefillReady, sRefill = Value
 }
 
+//  |______Tag______|__Line__|___Offset___|
 class Cache(val p: CacheConfig, val nasti: NastiBundleParameters, val xlen: Int) extends Module {
   // local parameters
-  val nSets = p.nSets
-  val bBytes = p.blockBytes
-  val bBits = bBytes << 3
-  val blen = log2Ceil(bBytes)
-  val slen = log2Ceil(nSets)
-  val tlen = xlen - (slen + blen)
+  val nSets = p.nSets         // Cache 组数
+  val bBytes = p.blockBytes   // Cache 每一块的字节数
+  val bBits = bBytes << 3     // Cache 每一块的比特位数
+  val blen = log2Ceil(bBytes) // Cache 每块内编址占用的比特位数
+  val slen = log2Ceil(nSets)  // Cache 组号编址占用的比特位数
+  val tlen = xlen - (slen + blen) // 地址Tag位
   val nWords = bBits / xlen
   val wBytes = xlen / 8
   val byteOffsetBits = log2Ceil(wBytes)
@@ -109,7 +119,11 @@ class Cache(val p: CacheConfig, val nasti: NastiBundleParameters, val xlen: Int)
   val wmeta = Wire(new MetaData(tlen))
   wmeta.tag := tag_reg
 
-  val wmask = Mux(!is_alloc, (cpu_mask << Cat(off_reg, 0.U(byteOffsetBits.W))).zext, (-1).S)
+  val wmask = Mux(
+    !is_alloc,
+    (cpu_mask << Cat(off_reg, 0.U(byteOffsetBits.W) ) ).asUInt.zext, // WARNING?
+    (-1).S
+  )
   val wdata = Mux(
     !is_alloc,
     Fill(nWords, cpu_data),
@@ -125,7 +139,7 @@ class Cache(val p: CacheConfig, val nasti: NastiBundleParameters, val xlen: Int)
     dataMem.zipWithIndex.foreach {
       case (mem, i) =>
         val data = VecInit.tabulate(wBytes)(k => wdata(i * xlen + (k + 1) * 8 - 1, i * xlen + k * 8))
-        mem.write(idx_reg, data, wmask((i + 1) * wBytes - 1, i * wBytes).asBools())
+        mem.write(idx_reg, data, wmask((i + 1) * wBytes - 1, i * wBytes).asBools)
         mem.suggestName(s"dataMem_${i}")
     }
   }
