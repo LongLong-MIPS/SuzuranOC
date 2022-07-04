@@ -34,6 +34,13 @@ class AluIO(width: Int) extends Bundle {
 
 import mini.Alu._
 
+/**
+  * module add(input ... output..)
+  *
+  * assign c = b & a
+  *
+  * endmodule
+  */
 // 抽象类 , 定义了Alu的接口
 trait Alu extends Module {
   def width: Int

@@ -31,8 +31,8 @@ class CoreTester(core: => Core, benchmark: String, trace: Boolean = false) exten
 
   val cycle = RegInit(0.U(32.W))
 
-  /**
-    * Cache| >Request>>> | Mem
+  /** AXI4
+    * Cache | >Request>>> | Mem
     *      | Response<<< |
     */
   val iaddr = dut.io.icache.req.bits.addr / (xlen / 8).U
