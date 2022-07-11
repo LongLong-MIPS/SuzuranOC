@@ -15,7 +15,9 @@ object TileTesterState extends ChiselEnum {
   val sIdle, sWrite, sWrAck, sRead = Value
 }
 
-class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Boolean = false) extends BasicTester {
+// 在该测试中，模拟了一个AXI中从机身份的Mem
+// 该Mem并非是按照字节编址
+class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Boolean = true) extends BasicTester {
   val originalHexFile = os.rel / "tests" / f"$benchmark.hex"
   val resizedHexFile = os.rel / "tests" / "64" / f"$benchmark.hex"
   TestUtils.resizeHexFile(os.pwd / originalHexFile, os.pwd / resizedHexFile, 64) // we have 64 bits per memory entry
@@ -27,25 +29,41 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
   dut.io.host.fromhost.bits := 0.U
   dut.io.host.fromhost.valid := false.B
 
-  val _mem = Mem(1 << 20, UInt(nasti.dataBits.W))
+  // Memory AXI4
+  val _mem = Mem(1 << 20, UInt(nasti.dataBits.W)) // 1MB
   loadMemoryFromFileInline(_mem, resizedHexFile.toString())
+
+
   import TileTesterState._
-  val state = RegInit(sIdle)
+  val state = RegInit(sIdle) // 标识从机mem的工作状态
   val cycle = RegInit(0.U(32.W))
 
-  val id = Reg(UInt(nasti.idBits.W))
-  val addr = Reg(UInt(nasti.addrBits.W))
-  val len = Reg(UInt(NastiConstants.LenBits.W))
-  val off = Reg(UInt(NastiConstants.LenBits.W))
+  val id    = Reg(UInt(nasti.idBits.W))
+  val addr  = Reg(UInt(nasti.addrBits.W)) // start address
+  val len   = Reg(UInt(NastiConstants.LenBits.W))
+  val off   = Reg(UInt(NastiConstants.LenBits.W)) // offset from start address
   val write = (0 until (nasti.dataBits / 8)).foldLeft(0.U(nasti.dataBits.W)) { (write, i) =>
     write |
-      (Mux(dut.io.nasti.w.bits.strb(i), dut.io.nasti.w.bits.data, _mem(addr))(
-        8 * (i + 1) - 1,
-        8 * i
-      ) << (8 * i).U).asUInt
+      (
+        Mux(dut.io.nasti.w.bits.strb(i),
+          dut.io.nasti.w.bits.data,
+          _mem(addr))
+        (8 * (i + 1) - 1 , 8 * i) << (8 * i).U).asUInt
   }
   val bpipe = WireInit(dut.io.nasti.b)
   val rpipe = WireInit(dut.io.nasti.r)
+
+  /**
+    *   Master(Tile)    ---------   Slaver(Memory)
+    *
+    *   Address Write   == AW == >
+    *   Data Write      == W  == >
+    *   Response      < == B  ==
+    *
+    *   Address Read    == AR == >
+    *   Data Read     < == R  ==
+    *
+    */
 
   dut.reset := reset.asBool
   dut.io.nasti.aw.ready := state === sIdle
@@ -53,15 +71,17 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
   dut.io.nasti.w.ready := state === sWrite
   dut.io.nasti.b <> LatencyPipe(bpipe, latency)
   dut.io.nasti.r <> LatencyPipe(rpipe, latency)
-  bpipe.bits := NastiWriteResponseBundle(nasti)(id)
+
+  bpipe.bits  := NastiWriteResponseBundle(nasti)(id)
   bpipe.valid := state === sWrAck
-  rpipe.bits := NastiReadDataBundle(nasti)(id, _mem(addr + off), off === len)
+  rpipe.bits  := NastiReadDataBundle(nasti)(id, _mem(addr + off), off === len)
   rpipe.valid := state === sRead
 
   val isDone = WireInit(false.B)
   val setDone = WireInit(false.B)
 
   cycle := cycle + 1.U
+  // (Maybe) CSR 通过tohost发出停止指令
   when(dut.io.host.tohost =/= 0.U) {
     isDone := true.B
   }
@@ -69,35 +89,40 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
   setDone := isDone
   when(setDone) {
     printf("cycles: %d\n", cycle)
-    assert((dut.io.host.tohost >> 1.U) === 0.U, "* tohost: %d *\n", dut.io.host.tohost)
+    assert((dut.io.host.tohost >> 1.U).asUInt === 0.U, "* tohost: %d *\n", dut.io.host.tohost)
     stop()
   }
 
+  /** 内存状态机的实现 */
   switch(state) {
     is(sIdle) {
+      /** 1. 内存处于空闲状态，接收到TILE的写入请求valid信号 */
       when(dut.io.nasti.aw.valid) {
         assert((1.U << dut.io.nasti.aw.bits.size).asUInt === (nasti.dataBits / 8).U)
-        addr := dut.io.nasti.aw.bits.addr / (nasti.dataBits / 8).U
-        id := dut.io.nasti.aw.bits.id
-        len := dut.io.nasti.aw.bits.len
-        off := 0.U
-        state := sWrite
+        addr  := dut.io.nasti.aw.bits.addr / (nasti.dataBits / 8).U
+        id    := dut.io.nasti.aw.bits.id
+        len   := dut.io.nasti.aw.bits.len
+        off   := 0.U
+        state := sWrite // 切换为写状态
+
+        /** 2. 内存处于空闲状态，接受到TILE的读取请求valid信号 */
       }.elsewhen(dut.io.nasti.ar.valid) {
         assert((1.U << dut.io.nasti.ar.bits.size).asUInt === (nasti.dataBits / 8).U)
-        addr := dut.io.nasti.ar.bits.addr / (nasti.dataBits / 8).U
-        id := dut.io.nasti.aw.bits.id
-        len := dut.io.nasti.ar.bits.len
-        off := 0.U
-        state := sRead
+        addr  := dut.io.nasti.ar.bits.addr / (nasti.dataBits / 8).U // ?
+        id    := dut.io.nasti.ar.bits.id
+        len   := dut.io.nasti.ar.bits.len
+        off   := 0.U
+        state := sRead // 切换为读状态
       }
     }
     is(sWrite) {
+      /** 3. 内存处于写状态，接收到写数据通道的valid信号 */
       when(dut.io.nasti.w.valid) {
         _mem(addr + off) := write
         if (trace) printf("MEM[%x] <= %x\n", (addr + off) * (nasti.dataBits / 8).U, write)
         when(off === len) {
           assert(dut.io.nasti.w.bits.last)
-          state := sWrAck
+          state := sWrAck // 如果写结束，切换到返回写相应状态
         }.otherwise {
           off := off + 1.U
         }
@@ -110,6 +135,7 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
     }
     is(sRead) {
       when(rpipe.ready) {
+        if (trace) printf("addr %x => %x + %x : MEM[%x] => %x\n", dut.io.nasti.ar.bits.addr , addr , off , (addr + off) * (nasti.dataBits / 8).U, _mem(addr + off))
         when(off === len) {
           state := sIdle
         }.otherwise {
@@ -119,7 +145,7 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
     }
   }
 }
-
+// Decoupled() 增加valid ready握手信号
 class LatencyPipeIO[T <: Data](val gen: T) extends Bundle {
   val in = Flipped(Decoupled(gen))
   val out = Decoupled(gen)
@@ -141,6 +167,7 @@ object LatencyPipe {
 
 class TileSimpleTests extends AnyFlatSpec with ChiselScalatestTester {
   behavior.of("Tile")
+
   val p = MiniConfig()
   it should "execute a simple test" in {
     test(new TileTester(Tile(p), "rv32ui-p-simple")).runUntilStop(15000)
@@ -160,6 +187,6 @@ abstract class TileTests(cfg: TestConfig, useVerilator: Boolean = false)
   }
 }
 
-class TileISATests extends TileTests(ISATests, true)
+class TileISATests extends TileTests(ISATests, false)
 class TileBmarkTests extends TileTests(BmarkTests, true)
 class TileLargeBmarkTests extends TileTests(LargeBmarkTests, true)

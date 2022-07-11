@@ -6,10 +6,10 @@ import chisel3.stage.ChiselGeneratorAnnotation
 import firrtl.options.TargetDirAnnotation
 
 object Main extends App {
-  val targetDirectory = args.head
+  val targetDirectory = "./verilog"
   val config = MiniConfig()
   new chisel3.stage.ChiselStage().execute(
-    args,
+    Array.empty,
     Seq(
       ChiselGeneratorAnnotation(() =>
         new Tile(
