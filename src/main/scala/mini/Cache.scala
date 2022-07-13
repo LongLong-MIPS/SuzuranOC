@@ -248,10 +248,16 @@ class Cache(val p: CacheConfig, val nasti: NastiBundleParameters, val xlen: Int)
   }
 }
 
-class ThroughCacheIO(nastiParams: NastiBundleParameters, addrWidth: Int, dataWidth: Int)
-    extends CacheModuleIO(nastiParams, addrWidth, dataWidth) {
+class ThroughCacheIO(addrWidth: Int, dataWidth: Int)
+    extends CacheIO(addrWidth, dataWidth) {
   val direct_en = Input(Bool())
 }
+
+class ThroughCacheModuleIO(nastiParams: NastiBundleParameters, addrWidth: Int, dataWidth: Int) extends Bundle {
+  val cpu = new ThroughCacheIO(addrWidth, dataWidth)
+  val nasti = new NastiBundle(nastiParams)
+}
+
 
 class ThroughCache(
   val p:     CacheConfig,
@@ -259,7 +265,7 @@ class ThroughCache(
   val xlen:  Int)
     extends Module {
 
-  val io = IO(new ThroughCacheIO(nasti, xlen, xlen))
+  val io = IO(new ThroughCacheModuleIO(nasti , xlen, xlen))
 
   val cache = Module(new Cache(p, nasti, xlen))
 
@@ -271,53 +277,90 @@ class ThroughCache(
   io.nasti.w.valid := false.B
   io.nasti.r.ready := false.B
 
+  cache.io.nasti.b.valid := false.B
+  cache.io.nasti.r.valid := false.B
+  cache.io.nasti.ar.ready := false.B
+  cache.io.nasti.aw.ready := false.B
+  cache.io.nasti.w.ready := false.B
 
-  when(!io.direct_en) {
-    io.cpu <> cache.io.cpu
-    io.nasti <> cache.io.nasti
-    printf("Cached\n");
-    // direct write
-  }.elsewhen( io.cpu.req.bits.mask.orR ) {
-    printf("Direct write : %x\n" , io.cpu.req.bits.addr);
+  cache.io.nasti.b.bits := DontCare
+  cache.io.nasti.r.bits := DontCare
 
-    io.nasti.aw.valid := true.B
-    io.nasti.w.valid := true.B
-    io.nasti.b.valid := true.B
+  val output_direct = Wire(new NastiBundle(nasti))
+  output_direct := DontCare
+  output_direct.ar.valid := false.B
+  output_direct.aw.valid := false.B
+  output_direct.b.ready := false.B
+  output_direct.w.valid := false.B
+  output_direct.r.ready := false.B
 
-    io.nasti.aw.bits := NastiAddressBundle(nasti)(
-      0.U,
-      io.cpu.req.bits.addr,
-      MuxLookup(
-        io.cpu.req.bits.mask,
-        0.U ,
-        Seq("b1111".U -> 2.U , "b11".U -> 1.U , "b1".U -> 0.U)
-      )
-    )
+  val direct_reg = RegInit(false.B)
 
-    io.nasti.w.bits := NastiWriteDataBundle(nasti) (
-      io.cpu.req.bits.data
-    )
+  direct_reg := io.cpu.direct_en
+  io.cpu.req <> cache.io.cpu.req
+  io.cpu.resp <> cache.io.cpu.resp
+  io.cpu.abort <> cache.io.cpu.abort
 
-    when( io.nasti.b.fire ) {
-      io.cpu.resp.valid := true.B
-    }
 
-    // direct read
+
+  when(direct_reg) {
+
+    io.nasti <> output_direct
   }.otherwise {
-    printf("Direct read : %x\n" , io.cpu.req.bits.addr);
+    io.nasti <> cache.io.nasti
+  }
 
-    io.nasti.ar.valid := true.B
-    io.nasti.r.ready  := true.B
+  val mask_reg = RegInit(0.U(4.W))
+  val addr_reg = RegInit(0.U(32.W))
+  mask_reg := io.cpu.req.bits.mask
+  addr_reg := io.cpu.req.bits.addr
 
-    io.nasti.ar.bits := NastiAddressBundle(nasti)(
-      0.U,
-      io.cpu.req.bits.addr,
-      log2Up(nasti.dataBits / 8).U
-    )
-    when( io.nasti.r.fire ) {
-      io.cpu.resp.bits.data := io.nasti.r.bits.data
-      io.cpu.resp.valid := true.B
+  when(direct_reg) {
+    when(mask_reg.orR) {
+      printf("Direct write : %x ; size : %x ; mask : %x\n",
+        io.cpu.req.bits.addr , output_direct.aw.bits.size , mask_reg);
+
+
+      output_direct.aw.valid := true.B
+      output_direct.aw.bits := NastiAddressBundle(nasti)(
+        0.U,
+        addr_reg,
+        MuxLookup(
+          mask_reg,
+          0.U,
+          Seq("b1111".U -> 2.U, "b11".U -> 1.U, "b1".U -> 0.U)
+        )
+      )
+
+      output_direct.w.valid := true.B
+      output_direct.w.bits := NastiWriteDataBundle(nasti)(
+        io.cpu.req.bits.data
+      )
+
+      output_direct.b.ready := true.B
+      when(io.nasti.b.fire) {
+        io.cpu.resp.valid := true.B
+      }
+
+      // direct read
+    }.otherwise {
+      printf("Direct read : %x -- %x \n"
+        , io.cpu.req.bits.addr , addr_reg );
+
+
+      output_direct.ar.valid := true.B
+      output_direct.ar.bits := NastiAddressBundle(nasti)(
+        0.U,
+        addr_reg,
+        log2Up(nasti.dataBits / 8).U
+      )
+
+      output_direct.r.ready := true.B
+      when(io.nasti.r.fire) {
+        io.cpu.resp.bits.data := io.nasti.r.bits.data
+        io.cpu.resp.valid := true.B
+      }
+
     }
-
   }
 }

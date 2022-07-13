@@ -24,8 +24,8 @@ class HostIO(xlen: Int) extends Bundle {
 // resp为输入信号 req为输出
 class CoreIO(xlen: Int) extends Bundle {
   val host = new HostIO(xlen)
-  val icache = Flipped(new CacheIO(xlen, xlen))
-  val dcache = Flipped(new CacheIO(xlen, xlen))
+  val icache = Flipped(new ThroughCacheIO(xlen, xlen))
+  val dcache = Flipped(new ThroughCacheIO(xlen, xlen))
 
   val debug = new DebugBundle(xlen , xlen)
 }
@@ -38,7 +38,8 @@ class Core(val conf: CoreConfig) extends Module {
 
   io.host <> dpath.io.host
   io.debug <> dpath.io.debug
-  dpath.io.icache <> io.icache
-  dpath.io.dcache <> io.dcache
+
+  io.icache <> dpath.io.icache
+  io.dcache <> dpath.io.dcache
   dpath.io.ctrl <> ctrl.io
 }

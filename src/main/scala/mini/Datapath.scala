@@ -59,8 +59,8 @@ case class VaddrArbiter(xlen : Int) extends Module {
 // 数据通路的IO , ctrl为整个通路的控制信号
 class DatapathIO(xlen: Int) extends Bundle {
   val host = new HostIO(xlen)
-  val icache = Flipped(new CacheIO(xlen, xlen))
-  val dcache = Flipped(new CacheIO(xlen, xlen))
+  val icache = Flipped(new ThroughCacheIO(xlen, xlen))
+  val dcache = Flipped(new ThroughCacheIO(xlen, xlen))
   val ctrl = Flipped(new ControlSignals)
 
   val debug = new DebugBundle(xlen, xlen)
@@ -172,7 +172,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   io.icache.req.bits.mask := 0.U
   io.icache.req.valid := !stall
   io.icache.abort := false.B
-
+  io.icache.direct_en := true.B //!
   // Pipelining
   when(!stall) {
     fe_reg.pc := pc
@@ -239,6 +239,7 @@ class Datapath(val conf: CoreConfig) extends Module {
     "b0000".U,
     Seq(ST_SW -> "b1111".U, ST_SH -> ("b11".U << alu.io.sum(1, 0)), ST_SB -> ("b1".U << alu.io.sum(1, 0)))
   )
+  io.dcache.direct_en := false.B
 
   // Pipelining
   when(reset.asBool || !stall && csr.io.expt) {
