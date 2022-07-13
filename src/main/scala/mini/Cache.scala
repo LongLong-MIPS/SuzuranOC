@@ -170,7 +170,7 @@ class Cache(val p: CacheConfig, val nasti: NastiBundleParameters, val xlen: Int)
   io.nasti.aw.bits := NastiAddressBundle(nasti)(
     0.U,
     (Cat(rmeta.tag, idx_reg) << blen.U).asUInt,
-    log2Up(nasti.dataBits / 8).U,
+    log2Ceil(nasti.dataBits / 8).U,
     (dataBeats - 1).U
   )
   io.nasti.aw.valid := false.B
@@ -267,42 +267,52 @@ class ThroughCache(
 
   io.nasti.ar.valid := false.B
   io.nasti.aw.valid := false.B
+  io.nasti.b.ready := false.B
   io.nasti.w.valid := false.B
-  io.nasti.b.valid := false.B
-  io.nasti.r.valid := false.B
+  io.nasti.r.ready := false.B
 
 
   when(!io.direct_en) {
     io.cpu <> cache.io.cpu
     io.nasti <> cache.io.nasti
-
+    printf("Cached\n");
     // direct write
   }.elsewhen( io.cpu.req.bits.mask.orR ) {
+    printf("Direct write : %x\n" , io.cpu.req.bits.addr);
 
-//    io.nasti.aw.bits := NastiAddressBundle(nasti)(
-//      0.U,
-//      (Cat(rmeta.tag, idx_reg) << blen.U).asUInt,
-//      log2Up(nasti.dataBits / 8).U,
-//      (dataBeats - 1).U
-//    )
-//
-//    io.nasti.w.bits := NastiWriteDataBundle(nasti) (
-//
-//    )
-//
-//    io.nasti.aw.valid := false.B
-//
+    io.nasti.aw.valid := true.B
+    io.nasti.w.valid := true.B
+    io.nasti.b.valid := true.B
+
+    io.nasti.aw.bits := NastiAddressBundle(nasti)(
+      0.U,
+      io.cpu.req.bits.addr,
+      MuxLookup(
+        io.cpu.req.bits.mask,
+        0.U ,
+        Seq("b1111".U -> 2.U , "b11".U -> 1.U , "b1".U -> 0.U)
+      )
+    )
+
+    io.nasti.w.bits := NastiWriteDataBundle(nasti) (
+      io.cpu.req.bits.data
+    )
+
+    when( io.nasti.b.fire ) {
+      io.cpu.resp.valid := true.B
+    }
 
     // direct read
   }.otherwise {
+    printf("Direct read : %x\n" , io.cpu.req.bits.addr);
 
     io.nasti.ar.valid := true.B
-    io.nasti.r.valid  := true.B
+    io.nasti.r.ready  := true.B
 
     io.nasti.ar.bits := NastiAddressBundle(nasti)(
       0.U,
       io.cpu.req.bits.addr,
-      32.U
+      log2Up(nasti.dataBits / 8).U
     )
     when( io.nasti.r.fire ) {
       io.cpu.resp.bits.data := io.nasti.r.bits.data
