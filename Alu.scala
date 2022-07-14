@@ -13,13 +13,14 @@ object Alu extends ChiselEnum {
   val ALU_AND   = 2.U(4.W)
   val ALU_OR    = 3.U(4.W)
   val ALU_XOR   = 4.U(4.W)
-  val ALU_SLT   = 5.U(4.W)
-  val ALU_SLL   = 6.U(4.W)
-  val ALU_SLTU  = 7.U(4.W)
-  val ALU_SRL   = 8.U(4.W)
-  val ALU_SRA   = 9.U(4.W)
+  val ALU_SLT   = 5.U(4.W)//返回有符号数比较结果
+  val ALU_SLL   = 6.U(4.W)//逻辑左移
+  val ALU_SLTU  = 7.U(4.W)//返回无符号数比较结果
+  val ALU_SRL   = 8.U(4.W)//逻辑右移
+  val ALU_SRA   = 9.U(4.W)//算数右移
   val ALU_COPY_A = 10.U(4.W)
-  val ALU_COPY_B = 11.U(4.W)
+  val ALU_COPY_B = 11.U(4.W)//输出B端口的值
+  val ALU_NOR    = 12.U(4.W)
   val ALU_XXX    = 15.U(4.W)
 }
 
@@ -34,13 +35,6 @@ class AluIO(width: Int) extends Bundle {
 
 import mini.Alu._
 
-/**
-  * module add(input ... output..)
-  *
-  * assign c = b & a
-  *
-  * endmodule
-  */
 // 抽象类 , 定义了Alu的接口
 trait Alu extends Module {
   def width: Int
@@ -72,6 +66,7 @@ class AluSimple(val width: Int) extends Alu {
       ALU_OR -> (io.A | io.B),
       ALU_XOR -> (io.A ^ io.B),
       ALU_COPY_A -> io.A
+      ALU_NOR  ->(~(io.A | io.B))
     )
   )
 

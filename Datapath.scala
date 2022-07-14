@@ -184,9 +184,13 @@ class Datapath(val conf: CoreConfig) extends Module {
   io.ctrl.inst := fe_reg.inst
 
   // regFile read
-  val rd_addr = fe_reg.inst(11, 7)
-  val rs1_addr = fe_reg.inst(19, 15)
-  val rs2_addr = fe_reg.inst(24, 20)
+  // val rd_addr = fe_reg.inst(11, 7)
+  // val rs1_addr = fe_reg.inst(19, 15)
+  // val rs2_addr = fe_reg.inst(24, 20)
+  // val rd_addr  = fe_reg.inst(15, 11)
+  val rd_addr  = Mux(io.ctrl.imm_sel === IMM_X || io.ctrl.imm_sel === IMM_S, fe_reg.inst(15, 11), fe_reg.inst(20, 16))
+  val rs1_addr = fe_reg.inst(20, 16)
+  val rs2_addr = fe_reg.inst(25, 21)//
   regFile.io.raddr1 := rs1_addr
   regFile.io.raddr2 := rs2_addr
 
@@ -210,8 +214,9 @@ class Datapath(val conf: CoreConfig) extends Module {
     * (3) WAR(write after read) (Out-Of-Order)
     *     add x5, x4*, x6
     *     add x4*, x3, x2
-    */
-  val wb_rd_addr = ew_reg.inst(11, 7)
+    */ 
+  //
+  val wb_rd_addr = Mux(io.ctrl.imm_sel === IMM_X || io.ctrl.imm_sel === IMM_S, ew_reg(15, 11), ew_reg(20, 16))
   val rs1hazard = wb_en && rs1_addr.orR && (rs1_addr === wb_rd_addr)
   val rs2hazard = wb_en && rs2_addr.orR && (rs2_addr === wb_rd_addr)
   val rs1 = Mux(wb_sel === WB_ALU && rs1hazard, ew_reg.alu, regFile.io.rdata1)
