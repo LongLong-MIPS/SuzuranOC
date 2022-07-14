@@ -20,17 +20,22 @@ trait ImmGen extends Module {
 
 class ImmGenWire(val xlen: Int) extends ImmGen {
   val io = IO(new ImmGenIO(xlen))
-  val Iimm = io.inst(31, 20).asSInt
-  val Simm = Cat(io.inst(31, 25), io.inst(11, 7)).asSInt
-  val Bimm = Cat(io.inst(31), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W)).asSInt
-  val Uimm = Cat(io.inst(31, 12), 0.U(12.W)).asSInt
-  val Jimm = Cat(io.inst(31), io.inst(19, 12), io.inst(20), io.inst(30, 25), io.inst(24, 21), 0.U(1.W)).asSInt
-  val Zimm = io.inst(19, 15).zext
-
+  // val Iimm = io.inst(31, 20).asSInt
+  // val Simm = Cat(io.inst(31, 25), io.inst(11, 7)).asSInt
+  // val Bimm = Cat(io.inst(31), io.inst(7), io.inst(30, 25), io.inst(11, 8), 0.U(1.W)).asSInt
+  // val Uimm = Cat(io.inst(31, 12), 0.U(12.W)).asSInt
+  // val Jimm = Cat(io.inst(31), io.inst(19, 12), io.inst(20), io.inst(30, 25), io.inst(24, 21), 0.U(1.W)).asSInt
+  // val Zimm = io.inst(19, 15).zext
+  val Iimm = io.inst(15,0).asSInt
+  val Uimm = io.inst(15,0).zext
+  val Himm = Cat(io.inst(31, 16), 0.U(16.W)).asSInt
+  val Simm = io.inst(10.6)
+  val Limm = (io.inst(15,0)<<2.U).asSInt
+  val Jimm = (io.inst(25,0)<<2.U)
   io.out := MuxLookup(
     io.sel,
     Iimm & (-2).S,
-    Seq(IMM_I -> Iimm, IMM_S -> Simm, IMM_B -> Bimm, IMM_U -> Uimm, IMM_J -> Jimm, IMM_Z -> Zimm)
+    Seq(IMM_I -> Iimm, IMM_U -> Uimm, IMM_H -> Himm, IMM_S -> Simm, IMM_L -> Limm, IMM_J -> Jimm)
   ).asUInt
 }
 
