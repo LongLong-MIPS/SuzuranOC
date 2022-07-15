@@ -17,11 +17,11 @@ class LoongsonTests extends AnyFlatSpec with ChiselScalatestTester{
   behavior of "self test-cases"
 
   val cases = List(
-    "srl"
+    "beq"
   )
   cases.foreach(name => {
     it should s"${name}" in {
-      test(new TileTester(Tile(c),name)).runUntilStop(200)
+      test(new TileTester(Tile(c),name)).runUntilStop(350)
     }
   })
 }

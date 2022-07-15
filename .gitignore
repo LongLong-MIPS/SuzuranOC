@@ -31,3 +31,4 @@ tests/64/*
 novas_dump.log
 ucli.key
 
+/.vscode/

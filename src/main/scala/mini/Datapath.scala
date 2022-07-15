@@ -13,6 +13,8 @@ object Const {
   //val PC_START = 0xBFC00000
   val PC_EVEC  = 0x100
 
+  val JUMP_REG = 0x1F
+
   val ADDR_MASK = 0x1FFFFFFF
   val KSEG0_TAG = 0x4 //b100
   val KSEG1_TAG = 0x5 //b101
@@ -161,7 +163,7 @@ class Datapath(val conf: CoreConfig) extends Module {
     * (5) cache冲突，暂停
   */
   val inst =
-    Mux(started || io.ctrl.inst_kill || brCond.io.taken,// || csr.io.expt,
+    Mux(started || io.ctrl.inst_kill, // || csr.io.expt, // brCond.io.taken was deleted due to DELAY SLOT
       Instructions.NOP,
       io.icache.resp.bits.data) // response 通道
   pc := next_pc
@@ -228,10 +230,15 @@ class Datapath(val conf: CoreConfig) extends Module {
     */ 
   //??????????????
   val wb_rd_addr = Mux(
-    ew_reg.imm_sel === IMM_X || ew_reg.imm_sel === IMM_S,
-    ew_reg.inst(15, 11),
-    ew_reg.inst(20, 16)
+    wb_sel === WB_PC8,
+    Const.JUMP_REG.U(5.W) ,
+    Mux(
+      ew_reg.imm_sel === IMM_X || ew_reg.imm_sel === IMM_S,
+      ew_reg.inst(15, 11),
+      ew_reg.inst(20, 16)
+    )
   )
+
   val rs1hazard = wb_en && rs1_addr.orR && (rs1_addr === wb_rd_addr)
   val rs2hazard = wb_en && rs2_addr.orR && (rs2_addr === wb_rd_addr)
   val rs1 = Mux(wb_sel === WB_ALU && rs1hazard, ew_reg.alu, regFile.io.rdata1)
@@ -242,7 +249,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   // pc , 立即数，  rs1 2 3
   alu.io.A := MuxLookup(
     io.ctrl.A_sel , 0.U ,
-    Seq(A_RS1 -> rs1 , A_RS2 -> rs2 , A_PC -> fe_reg.pc)
+    Seq(A_RS1 -> rs1 , A_RS2 -> rs2 , A_PC -> pc) // pc为延迟槽指令的，对应前一个周期
   )
 
   alu.io.B := MuxLookup(
@@ -251,10 +258,10 @@ class Datapath(val conf: CoreConfig) extends Module {
   )
   alu.io.alu_op := io.ctrl.alu_op
 
-  printf("ALU  : %x <> %x <> %x \n" +
+  printf("ALU  : %x <> %x <> %x <> %x\n" +
     "DATA : %x <> %x <> %x\n" +
     "RS1&2: %x <> %x \n",
-    alu.io.A , alu.io.B , alu.io.out,
+    alu.io.A , alu.io.B , alu.io.out, alu.io.sum ,
     regFile.io.rdata1 , regFile.io.rdata2 , immGen.io.out,
     rs1 , rs2)
     // Branch condition calc
@@ -334,7 +341,7 @@ class Datapath(val conf: CoreConfig) extends Module {
     MuxLookup(
       wb_sel,
       ew_reg.alu.zext,
-      Seq(WB_MEM -> load, WB_PC4 -> (ew_reg.pc + 4.U).zext, WB_CSR -> csr.io.out.zext)
+      Seq(WB_MEM -> load, WB_PC8 -> (ew_reg.pc + 8.U).zext, WB_CSR -> csr.io.out.zext)
     ).asUInt
 
   regFile.io.wen := wb_en && !stall && !csr.io.expt
@@ -353,14 +360,4 @@ class Datapath(val conf: CoreConfig) extends Module {
 
   printf("---------------------------\n\n")
 
-  // TODO: re-enable through AOP
-//  if (p(Trace)) {
-//    printf(
-//      "PC: %x, INST: %x, REG[%d] <- %x\n",
-//      ew_reg.pc,
-//      ew_reg.inst,
-//      Mux(regFile.io.wen, wb_rd_addr, 0.U),
-//      Mux(regFile.io.wen, regFile.io.wdata, 0.U)
-//    )
-//  }
 }

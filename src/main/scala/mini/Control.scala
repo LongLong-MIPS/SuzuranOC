@@ -40,11 +40,11 @@ object Control {
   val IMM_J = 6.U(3.W)//26位立即数左移两位 留作转移地址的处理
   // br_type
   val BR_XXX = 0.U(3.W)//不执行跳转
-  val BR_LTU = 1.U(3.W)//无符号数小于时发生跳转
-  val BR_LT = 2.U(3.W)//有符号数小于时发生跳转
+  val BR_LZ = 1.U(3.W)//小于0时发生跳转
+  val BR_LE = 2.U(3.W)//小于等于0时发生跳转
   val BR_EQ = 3.U(3.W)//相等发生跳转
-  val BR_GEU = 4.U(3.W)//无符号数大于等于时发生跳转
-  val BR_GE = 5.U(3.W)//有符号数大于等于时发生跳转
+  val BR_GZ = 4.U(3.W)//大于0时发生跳转
+  val BR_GE = 5.U(3.W)//大于等于0时发生跳转
   val BR_NE = 6.U(3.W)//不相等发生跳转
 
   // st_type
@@ -65,7 +65,7 @@ object Control {
   // 选择写入对应寄存器的数据来源
   val WB_ALU = 0.U(2.W)//从ALU进行写回
   val WB_MEM = 1.U(2.W)
-  val WB_PC4 = 2.U(2.W)//从pc+4进行写回
+  val WB_PC8 = 2.U(2.W)//从pc + 8进行写回
   val WB_CSR = 3.U(2.W)
 
   import Alu._
@@ -111,10 +111,12 @@ object Control {
   //分支跳转指令
   BEQ   -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_EQ , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),//rs1=rs2跳转
   BNE   -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_NE , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),//rs1！=rs2跳转
-//  BGEZ
-//  BGTZ
-//  BLEZ
-//  BLTZ
+  BGEZ  -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_GE , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  BGTZ  -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_GZ , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  BLEZ  -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_LE , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  BLTZ  -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_LZ , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  BGEZAL-> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_GE , N, ST_XXX, LD_XXX, WB_PC8, Y, CSR.N, N),
+  BLTZAL-> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_LZ , N, ST_XXX, LD_XXX, WB_PC8, Y, CSR.N, N),
 //  BGEZAL
 //  BLTZAL
 //  J
