@@ -26,8 +26,12 @@ class ImmGenWire(val xlen: Int) extends ImmGen {
   val Uimm = io.inst(15,0).zext   // 立即数零扩展
   val Himm = Cat( io.inst(15, 0), 0.U(16.W)).asSInt
   val Bimm = (io.inst(15 , 0) << 2.U).asSInt
-  val Jimm = Cat( io.pc(31 , 28) , io.inst(15 , 0) << 2.U ).asSInt // ????????
   val Simm = io.inst(10 , 6).asSInt //
+  val Jimm = Cat(
+    io.pc(xlen - 1 , xlen - 4) ,
+    io.inst(25 , 0),
+    0.U(2.W)
+  ).zext // ????????
 
   io.out := MuxLookup(
     io.sel,

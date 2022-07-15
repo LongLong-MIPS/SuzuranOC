@@ -37,7 +37,7 @@ object Control {
   val IMM_H = 3.U(3.W)//16位高位为该16位立即数 16位低位填零
   val IMM_S = 4.U(3.W)//用于移位指令中的SA立即数
   val IMM_B = 5.U(3.W)//左移 2 位并进行有符号扩展
-  val IMM_J = 6.U(3.W)//26位立即数左移两位 留作转移地址的处理
+  val IMM_J = 6.U(3.W)
   // br_type
   val BR_XXX = 0.U(3.W)//不执行跳转
   val BR_LZ = 1.U(3.W)//小于0时发生跳转
@@ -109,20 +109,18 @@ object Control {
   SRLV  -> List(PC_4  , A_RS2,  B_RS1, IMM_X, ALU_SRL   , BR_XXX, N, ST_XXX, LD_XXX, WB_ALU, Y, CSR.N, N),//逻辑右移，操作数是rs1，移位次数时rs2
   SRL   -> List(PC_4  , A_RS2,  B_IMM, IMM_S, ALU_SRL   , BR_XXX, N, ST_XXX, LD_XXX, WB_ALU, Y, CSR.N, N),//通过立即数对rs进行逻辑左移
   //分支跳转指令
-  BEQ   -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_EQ , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),//rs1=rs2跳转
-  BNE   -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_NE , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),//rs1！=rs2跳转
-  BGEZ  -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_GE , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
-  BGTZ  -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_GZ , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
-  BLEZ  -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_LE , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
-  BLTZ  -> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_LZ , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
-  BGEZAL-> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_GE , N, ST_XXX, LD_XXX, WB_PC8, Y, CSR.N, N),
-  BLTZAL-> List(PC_4  , A_PC,   B_IMM, IMM_B, ALU_ADD   , BR_LZ , N, ST_XXX, LD_XXX, WB_PC8, Y, CSR.N, N),
-//  BGEZAL
-//  BLTZAL
-//  J
-//  JAL
-//  JR
-//  JALR
+  BEQ   -> List(PC_4  , A_PC ,  B_IMM, IMM_B, ALU_ADD   , BR_EQ , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),//rs1=rs2跳转
+  BNE   -> List(PC_4  , A_PC ,  B_IMM, IMM_B, ALU_ADD   , BR_NE , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),//rs1！=rs2跳转
+  BGEZ  -> List(PC_4  , A_PC ,  B_IMM, IMM_B, ALU_ADD   , BR_GE , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  BGTZ  -> List(PC_4  , A_PC ,  B_IMM, IMM_B, ALU_ADD   , BR_GZ , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  BLEZ  -> List(PC_4  , A_PC ,  B_IMM, IMM_B, ALU_ADD   , BR_LE , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  BLTZ  -> List(PC_4  , A_PC ,  B_IMM, IMM_B, ALU_ADD   , BR_LZ , N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  BGEZAL-> List(PC_4  , A_PC ,  B_IMM, IMM_B, ALU_ADD   , BR_GE , N, ST_XXX, LD_XXX, WB_PC8, Y, CSR.N, N),
+  BLTZAL-> List(PC_4  , A_PC ,  B_IMM, IMM_B, ALU_ADD   , BR_LZ , N, ST_XXX, LD_XXX, WB_PC8, Y, CSR.N, N),
+  J     -> List(PC_ALU, A_XXX,  B_IMM, IMM_J, ALU_COPY_B, BR_XXX, N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  JAL   -> List(PC_ALU, A_XXX,  B_IMM, IMM_J, ALU_COPY_B, BR_XXX, N, ST_XXX, LD_XXX, WB_PC8, Y, CSR.N, N),
+  JR    -> List(PC_ALU, A_RS1,  B_XXX, IMM_X, ALU_COPY_A, BR_XXX, N, ST_XXX, LD_XXX, WB_ALU, N, CSR.N, N),
+  JALR  -> List(PC_ALU, A_RS1,  B_XXX, IMM_X, ALU_COPY_A, BR_XXX, N, ST_XXX, LD_XXX, WB_PC8, Y, CSR.N, N),
 //  //数据移动指令
 //  MFHI
 //  MFLO
@@ -130,7 +128,7 @@ object Control {
 //  MTLO
   //自陷指令
   BREAK -> List(PC_4  , A_XXX,  B_XXX, IMM_X, ALU_XXX   , BR_XXX, N, ST_XXX, LD_XXX, WB_CSR, N, CSR.P, N),
-  SYSCALL-> List(PC_4  , A_XXX,  B_XXX, IMM_X, ALU_XXX   , BR_XXX, N, ST_XXX, LD_XXX, WB_CSR, N, CSR.P, N),
+  SYSCALL->List(PC_4  , A_XXX,  B_XXX, IMM_X, ALU_XXX   , BR_XXX, N, ST_XXX, LD_XXX, WB_CSR, N, CSR.P, N),
   //访存指令
   LB    -> List(PC_0  , A_RS1,  B_IMM, IMM_I, ALU_ADD   , BR_XXX, Y, ST_XXX, LD_LB , WB_MEM, Y, CSR.N, N),//从存储器中读取一个8位数值,进行符号扩展到32位,再保存到rd中
   LBU   -> List(PC_0  , A_RS1,  B_IMM, IMM_I, ALU_ADD   , BR_XXX, Y, ST_XXX, LD_LBU, WB_MEM, Y, CSR.N, N),//从存储器中读取一个8位数值,进行零扩展到32位,再保存到rd中

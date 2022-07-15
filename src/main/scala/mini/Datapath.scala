@@ -149,7 +149,7 @@ class Datapath(val conf: CoreConfig) extends Module {
       stall -> pc,
       //csr.io.expt -> csr.io.evec,
       (io.ctrl.pc_sel === PC_EPC) -> csr.io.epc,
-      ((io.ctrl.pc_sel === PC_ALU) || (brCond.io.taken)) -> alu.io.sum ,
+      ((io.ctrl.pc_sel === PC_ALU) || (brCond.io.taken)) -> alu.io.out ,
       (io.ctrl.pc_sel === PC_0) -> pc
     )
   )
@@ -195,12 +195,6 @@ class Datapath(val conf: CoreConfig) extends Module {
     */
   io.ctrl.inst := fe_reg.inst
   // regFile read
-
-//  val rd_addr  = Mux(
-//    io.ctrl.imm_sel === IMM_X || io.ctrl.imm_sel === IMM_S,
-//    fe_reg.inst(15, 11),
-//    fe_reg.inst(20, 16)
-//  )
   val rs1_addr = fe_reg.inst(25, 21)
   val rs2_addr = fe_reg.inst(20, 16)
   regFile.io.raddr1 := rs1_addr
@@ -209,7 +203,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   // gen immdeates
   immGen.io.inst := fe_reg.inst
   immGen.io.sel := io.ctrl.imm_sel
-  immGen.io.pc := fe_reg.pc
+  immGen.io.pc := fe_reg.pc + 4.U
 
   // bypass
   /**

@@ -146,7 +146,7 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
     }
   }
 
-  when( dut.io.debug.wb_rf_wen.orR ) {
+  when( dut.io.debug.wb_rf_wen.orR  && dut.io.debug.wb_rf_wnum.orR) {
     printf("INFO %d %x %x %x\n" ,
       dut.io.debug.wb_rf_wen ,
       dut.io.debug.wb_pc ,
