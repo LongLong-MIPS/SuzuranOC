@@ -6,7 +6,7 @@ import chisel3._
 import chisel3.util.Valid
 import junctions.{DebugBundle}
 
-// 样例类，用于配置参数
+// 样例类，用于配置参数的示例，并未真正使用
 case class CoreConfig(
   xlen:       Int,
   makeAlu:    Int => Alu = new AluSimple(_),

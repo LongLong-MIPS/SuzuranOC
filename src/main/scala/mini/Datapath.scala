@@ -8,7 +8,8 @@ import junctions.{DebugBundle, NastiBundle, NastiBundleParameters}
 // PC_START定义为0x200 定义为cpu上电运行的第一条指令地址
 // PC_EVEC 0x100定义为 cpu异常运行的指令起始地址
 object Const {
-  val PC_START = 0x200
+  val PC_START = 0x4
+  //val PC_START = 0x200
   //val PC_START = 0xBFC00000
   val PC_EVEC  = 0x100
 
@@ -77,6 +78,7 @@ class ExecuteWritebackPipelineRegister(xlen: Int) extends Bundle {
   val inst = chiselTypeOf(Instructions.NOP)
   val pc = UInt(xlen.W)
   val alu = UInt(xlen.W)
+  val imm_sel = chiselTypeOf(Control.IMM_X)
   val csr_in = UInt(xlen.W)
 }
 
@@ -143,9 +145,9 @@ class Datapath(val conf: CoreConfig) extends Module {
     pc + 4.U,
     IndexedSeq(
       stall -> pc,
-      csr.io.expt -> csr.io.evec,
+      //csr.io.expt -> csr.io.evec,
       (io.ctrl.pc_sel === PC_EPC) -> csr.io.epc,
-      ((io.ctrl.pc_sel === PC_ALU) || (brCond.io.taken)) -> (alu.io.sum >> 1.U << 1.U),
+      ((io.ctrl.pc_sel === PC_ALU) || (brCond.io.taken)) -> alu.io.sum ,
       (io.ctrl.pc_sel === PC_0) -> pc
     )
   )
@@ -159,13 +161,20 @@ class Datapath(val conf: CoreConfig) extends Module {
     * (5) cache冲突，暂停
   */
   val inst =
-    Mux(started || io.ctrl.inst_kill || brCond.io.taken || csr.io.expt,
+    Mux(started || io.ctrl.inst_kill || brCond.io.taken,// || csr.io.expt,
       Instructions.NOP,
       io.icache.resp.bits.data) // response 通道
   pc := next_pc
 
   mmu.io.vaddr := next_pc
-  printf("VADDR : %x == %x \n" , next_pc , mmu.io.paddr)
+
+    printf("VADDR : %x == %x \n" +
+        "Cond : %x %x %x %x\n" +
+        "IS_Stall : %x \n" +
+        "INST : %x \n" ,
+      next_pc , pc ,
+      started , io.ctrl.inst_kill , brCond.io.taken , csr.io.expt ,
+      stall,fe_reg.inst)
 
   io.icache.req.bits.addr := mmu.io.paddr
   io.icache.req.bits.data := 0.U
@@ -173,6 +182,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   io.icache.req.valid := !stall
   io.icache.abort := false.B
   io.icache.direct_en := true.B //!
+
   // Pipelining
   when(!stall) {
     fe_reg.pc := pc
@@ -182,17 +192,22 @@ class Datapath(val conf: CoreConfig) extends Module {
   /** **** Execute ****
     */
   io.ctrl.inst := fe_reg.inst
-
   // regFile read
-  val rd_addr = fe_reg.inst(11, 7)
-  val rs1_addr = fe_reg.inst(19, 15)
-  val rs2_addr = fe_reg.inst(24, 20)
+
+//  val rd_addr  = Mux(
+//    io.ctrl.imm_sel === IMM_X || io.ctrl.imm_sel === IMM_S,
+//    fe_reg.inst(15, 11),
+//    fe_reg.inst(20, 16)
+//  )
+  val rs1_addr = fe_reg.inst(25, 21)
+  val rs2_addr = fe_reg.inst(20, 16)
   regFile.io.raddr1 := rs1_addr
   regFile.io.raddr2 := rs2_addr
 
   // gen immdeates
   immGen.io.inst := fe_reg.inst
   immGen.io.sel := io.ctrl.imm_sel
+  immGen.io.pc := fe_reg.pc
 
   // bypass
   /**
@@ -210,8 +225,13 @@ class Datapath(val conf: CoreConfig) extends Module {
     * (3) WAR(write after read) (Out-Of-Order)
     *     add x5, x4*, x6
     *     add x4*, x3, x2
-    */
-  val wb_rd_addr = ew_reg.inst(11, 7)
+    */ 
+  //??????????????
+  val wb_rd_addr = Mux(
+    ew_reg.imm_sel === IMM_X || ew_reg.imm_sel === IMM_S,
+    ew_reg.inst(15, 11),
+    ew_reg.inst(20, 16)
+  )
   val rs1hazard = wb_en && rs1_addr.orR && (rs1_addr === wb_rd_addr)
   val rs2hazard = wb_en && rs2_addr.orR && (rs2_addr === wb_rd_addr)
   val rs1 = Mux(wb_sel === WB_ALU && rs1hazard, ew_reg.alu, regFile.io.rdata1)
@@ -219,11 +239,25 @@ class Datapath(val conf: CoreConfig) extends Module {
   // e.g. load + add https://www.cnblogs.com/houhaibushihai/p/9737442.html
 
   // ALU operations
-  alu.io.A := Mux(io.ctrl.A_sel === A_RS1, rs1, fe_reg.pc)
-  alu.io.B := Mux(io.ctrl.B_sel === B_RS2, rs2, immGen.io.out)
+  // pc , 立即数，  rs1 2 3
+  alu.io.A := MuxLookup(
+    io.ctrl.A_sel , 0.U ,
+    Seq(A_RS1 -> rs1 , A_RS2 -> rs2 , A_PC -> fe_reg.pc)
+  )
+
+  alu.io.B := MuxLookup(
+    io.ctrl.B_sel , 0.U ,
+    Seq(B_RS1 -> rs1 , B_RS2 -> rs2 , B_IMM -> immGen.io.out)
+  )
   alu.io.alu_op := io.ctrl.alu_op
 
-  // Branch condition calc
+  printf("ALU  : %x <> %x <> %x \n" +
+    "DATA : %x <> %x <> %x\n" +
+    "RS1&2: %x <> %x \n",
+    alu.io.A , alu.io.B , alu.io.out,
+    regFile.io.rdata1 , regFile.io.rdata2 , immGen.io.out,
+    rs1 , rs2)
+    // Branch condition calc
   brCond.io.rs1 := rs1
   brCond.io.rs2 := rs2
   brCond.io.br_type := io.ctrl.br_type
@@ -249,11 +283,12 @@ class Datapath(val conf: CoreConfig) extends Module {
     csr_cmd := 0.U
     illegal := false.B
     pc_check := false.B
-  }.elsewhen(!stall && !csr.io.expt) {
+  }.elsewhen( !stall ) { // !csr.io.expt
     ew_reg.pc := fe_reg.pc
     ew_reg.inst := fe_reg.inst
     ew_reg.alu := alu.io.out
-    ew_reg.csr_in := Mux(io.ctrl.imm_sel === IMM_Z, immGen.io.out, rs1)
+    ew_reg.imm_sel := io.ctrl.imm_sel
+    ew_reg.csr_in := Mux(io.ctrl.imm_sel === IMM_X, immGen.io.out, rs1)
     st_type := io.ctrl.st_type
     ld_type := io.ctrl.ld_type
     wb_sel := io.ctrl.wb_sel
@@ -306,6 +341,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   regFile.io.waddr := wb_rd_addr
   regFile.io.wdata := regWrite
 
+  printf("PC_LINE : %x ---  %x --- %x\n" ,pc , fe_reg.pc , ew_reg.pc)
 
   io.debug.wb_pc := ew_reg.pc
   io.debug.wb_rf_wen := wb_en.asUInt
@@ -314,6 +350,8 @@ class Datapath(val conf: CoreConfig) extends Module {
 
   // Abort store when there's an exception
   io.dcache.abort := csr.io.expt
+
+  printf("---------------------------\n\n")
 
   // TODO: re-enable through AOP
 //  if (p(Trace)) {

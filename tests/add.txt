@@ -1,0 +1,9 @@
+addi $1 $0 0xFFFF
+addi $2 $0 0xFFFF
+addi $3 $0 0x0001
+add $2 $2 $1
+add $3 $2 $1
+add $3 $3 $3
+lui $4 0xFFAA
+addi $4 $4 0x0867
+add $4 $4 $4 # FF54 10CE

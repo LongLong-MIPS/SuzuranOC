@@ -1,5 +1,3 @@
-// See LICENSE for license details.
-
 package mini
 
 import chisel3.stage.ChiselGeneratorAnnotation

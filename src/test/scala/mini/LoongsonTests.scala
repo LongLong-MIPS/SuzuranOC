@@ -3,11 +3,25 @@ package mini
 import chiseltest._
 import org.scalatest.flatspec.AnyFlatSpec
 
+
+
 class LoongsonTests extends AnyFlatSpec with ChiselScalatestTester{
   behavior of "Loongson"
 
+
   val c = LoongConfig()
-  it should "test case #1" in {
-    test(new TileTester(Tile(c),"rv32ui-p-simple")).runUntilStop()
-  }
+//  it should "inst_ram" in {
+//    test(new TileTester(Tile(c),"inst_ram")).runUntilStop(1000)
+//  }
+
+  behavior of "self test-cases"
+
+  val cases = List(
+    "srl"
+  )
+  cases.foreach(name => {
+    it should s"${name}" in {
+      test(new TileTester(Tile(c),name)).runUntilStop(200)
+    }
+  })
 }

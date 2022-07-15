@@ -119,7 +119,7 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
       /** 3. 内存处于写状态，接收到写数据通道的valid信号 */
       when(dut.io.nasti.w.valid) {
         _mem(addr + off) := write
-        if (trace) printf("MEM[%x] <= %x\n", (addr + off) * (nasti.dataBits / 8).U, write)
+        if (trace) printf("TRACE MEM[%x] <= %x\n", (addr + off) * (nasti.dataBits / 8).U, write)
         when(off === len) {
           assert(dut.io.nasti.w.bits.last)
           state := sWrAck // 如果写结束，切换到返回写相应状态
@@ -135,7 +135,8 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
     }
     is(sRead) {
       when(rpipe.ready) {
-        if (trace) printf("addr %x => %x + %x : MEM[%x] => %x\n", dut.io.nasti.ar.bits.addr , addr , off , (addr + off) * (nasti.dataBits / 8).U, _mem(addr + off))
+        if (trace) printf("TRACE addr %x => %x + %x : MEM[%x] => %x\n",
+          dut.io.nasti.ar.bits.addr , addr , off , (addr + off) * (nasti.dataBits / 8).U, _mem(addr + off))
         when(off === len) {
           state := sIdle
         }.otherwise {
@@ -144,6 +145,15 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
       }
     }
   }
+
+  when( dut.io.debug.wb_rf_wen.orR ) {
+    printf("INFO %d %x %x %x\n" ,
+      dut.io.debug.wb_rf_wen ,
+      dut.io.debug.wb_pc ,
+      dut.io.debug.wb_rf_wnum,
+      dut.io.debug.wb_rf_wdata)
+  }
+
 }
 // Decoupled() 增加valid ready握手信号
 class LatencyPipeIO[T <: Data](val gen: T) extends Bundle {

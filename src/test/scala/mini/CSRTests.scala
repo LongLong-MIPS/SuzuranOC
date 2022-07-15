@@ -24,10 +24,10 @@ class CSRTester(c: => CSR, trace: Boolean = false) extends BasicTester with Test
       CSR.regs.map(csr => SYS(Funct3.CSRRCI, 0, csr, rand_rs1.litValue)) ++
       CSR.regs.map(csr => I(rand_fn3, 0, rand_rs1.litValue, csr.litValue)) ++ List[UInt](
       // system insts
-      Instructions.ECALL,
-      SYS(Funct3.CSRRC, 0, CSR.mcause, 0),
-      Instructions.EBREAK,
-      SYS(Funct3.CSRRC, 0, CSR.mcause, 0),
+//      Instructions.ECALL,
+//      SYS(Funct3.CSRRC, 0, CSR.mcause, 0),
+//      Instructions.EBREAK,
+//      SYS(Funct3.CSRRC, 0, CSR.mcause, 0),
       Instructions.ERET,
       SYS(Funct3.CSRRC, 0, CSR.mcause, 0),
       // illegal addr

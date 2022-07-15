@@ -344,10 +344,8 @@ class ThroughCache(
 
       // direct read
     }.otherwise {
-      printf("Direct read : %x -- %x \n"
-        , io.cpu.req.bits.addr , addr_reg );
-
-
+//      printf("Direct read : %x -- %x \n"
+//        , io.cpu.req.bits.addr , addr_reg );
       output_direct.ar.valid := true.B
       output_direct.ar.bits := NastiAddressBundle(nasti)(
         0.U,
