@@ -328,21 +328,17 @@ class ThroughCache(
       log2Up(nasti.dataBits / 8).U
     )
     io.nasti.w.bits := NastiWriteDataBundle(nasti)(
-      io.cpu.req.bits.data
+      io.cpu.req.bits.data,
+      Some(mask_reg)
     )
     io.nasti.aw.bits := NastiAddressBundle(nasti)(
-      0.U, addr_reg,
-      MuxLookup(
-        mask_reg, 0.U,
-        Seq("b1111".U -> 2.U, "b0011".U -> 1.U, "b0001".U -> 0.U) //?
-      )
+      0.U, addr_reg, 2.U
     )
     io.cpu.resp.bits.data := direct_r_data
     io.cpu.resp.valid := state === sIdle && !valid_reg
 
     switch(state) {
       is(sIdle) {
-
         when(valid_reg && !mask_reg.orR) {
           state := sReadCache
         }
