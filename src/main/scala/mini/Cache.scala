@@ -271,7 +271,6 @@ class ThroughCache(
 
   val cache = Module(new Cache(p, nasti, xlen))
 
-
   io.nasti.ar.valid := false.B
   io.nasti.aw.valid := false.B
   io.nasti.b.ready := false.B
@@ -287,22 +286,8 @@ class ThroughCache(
   cache.io.nasti.b.bits := DontCare
   cache.io.nasti.r.bits := DontCare
 
-  val direct_state = Reg(new Bundle{
-    val ar_valid = Bool()
-    val aw_valid = Bool()
-    val b_ready = Bool()
-    val w_valid = Bool()
-    val r_ready = Bool()
-    val r_data = UInt(nasti.dataBits.W)
-  })
+  val direct_r_data = Reg(UInt(nasti.dataBits.W))
 
-  when(reset.asBool) {
-    direct_state.ar_valid := false.B
-    direct_state.aw_valid := false.B
-    direct_state.b_ready  := false.B
-    direct_state.w_valid  := false.B
-    direct_state.r_ready  := false.B
-  }
   import CacheState._
   val state = RegInit(sIdle)
   val switch_reg = RegInit(false.B)
@@ -317,8 +302,8 @@ class ThroughCache(
   val mask_reg = RegInit(0.U(4.W))
   val addr_reg = RegInit(0.U(32.W))
   val valid_reg = RegInit(false.B)
-  mask_reg := io.cpu.req.bits.mask
-  addr_reg := io.cpu.req.bits.addr
+  mask_reg  := io.cpu.req.bits.mask
+  addr_reg  := io.cpu.req.bits.addr
   valid_reg := io.cpu.req.valid
 
 
@@ -331,18 +316,28 @@ class ThroughCache(
     io.nasti <> cache.io.nasti
 
   }.otherwise {
-    io.nasti.aw.valid := direct_state.aw_valid
-    io.nasti.ar.valid := state === sReadCache
+    io.nasti.aw.valid := state === sWriteCache
+    io.nasti.w.valid  := state === sWriteCache
+    io.nasti.b.ready  := state === sWriteCache
     io.nasti.r.ready  := state === sReadCache
-    io.nasti.w.valid  := direct_state.w_valid
-    io.nasti.b.ready  := direct_state.b_ready
+    io.nasti.ar.valid := state === sReadCache
 
     io.nasti.ar.bits := NastiAddressBundle(nasti)(
       0.U,
       addr_reg,
       log2Up(nasti.dataBits / 8).U
     )
-    io.cpu.resp.bits.data := direct_state.r_data
+    io.nasti.w.bits := NastiWriteDataBundle(nasti)(
+      io.cpu.req.bits.data
+    )
+    io.nasti.aw.bits := NastiAddressBundle(nasti)(
+      0.U, addr_reg,
+      MuxLookup(
+        mask_reg, 0.U,
+        Seq("b1111".U -> 2.U, "b0011".U -> 1.U, "b0001".U -> 0.U) //?
+      )
+    )
+    io.cpu.resp.bits.data := direct_r_data
     io.cpu.resp.valid := state === sIdle && !valid_reg
 
     switch(state) {
@@ -352,55 +347,23 @@ class ThroughCache(
           state := sReadCache
         }
         when(valid_reg &&  mask_reg.orR) {
+          printf("DEBUG Direct write : %x ; size : %x ; mask : %x\n",
+            io.cpu.req.bits.addr , io.nasti.aw.bits.size , mask_reg);
+
           state := sWriteCache
         }
       }
       is(sReadCache) {
         when(io.nasti.r.fire) {
-          direct_state.r_data := io.nasti.r.bits.data
+          direct_r_data := io.nasti.r.bits.data
           state := sIdle
         }
       }
       is(sWriteCache) {
-
+        when(io.nasti.b.fire) {
+          state := sIdle
+        }
       }
-    }
-
-    when(mask_reg.orR) {
-      printf("DEBUG Direct write : %x ; size : %x ; mask : %x\n",
-        io.cpu.req.bits.addr , io.nasti.aw.bits.size , mask_reg);
-
-      when (valid_reg) {
-        // Open aw/w/b channel
-        direct_state.aw_valid := true.B
-        direct_state.w_valid  := true.B
-        direct_state.b_ready  := true.B
-        io.nasti.aw.bits := NastiAddressBundle(nasti)(
-          0.U,
-          addr_reg,
-          MuxLookup(
-            mask_reg,
-            0.U,
-            Seq("b1111".U -> 2.U, "b11".U -> 1.U, "b1".U -> 0.U) //?
-          )
-        )
-
-        io.nasti.w.bits := NastiWriteDataBundle(nasti)(
-          io.cpu.req.bits.data
-        )
-
-      }
-      when(io.nasti.b.fire) {
-        io.cpu.resp.valid := true.B
-
-        // Close aw/w/b channel
-        direct_state.aw_valid := false.B
-        direct_state.w_valid  := false.B
-        direct_state.b_ready  := false.B
-      }
-
-      // direct read
-    }.otherwise {
     }
   }
 }
