@@ -171,12 +171,13 @@ class Datapath(val conf: CoreConfig) extends Module {
   mmu.io.vaddr := next_pc
 
     printf("VADDR : %x == %x \n" +
-        "Cond : %x %x %x %x\n" +
+        "Cond : %x %x %x %x %x\n" +
         "IS_Stall : %x \n" +
         "INST : %x \n" ,
       next_pc , pc ,
-      started , io.ctrl.inst_kill , brCond.io.taken , csr.io.expt ,
-      stall,fe_reg.inst)
+      started , io.ctrl.inst_kill , brCond.io.taken , csr.io.expt , io.ctrl.pc_sel ,
+      stall,
+      fe_reg.inst)
 
   io.icache.req.bits.addr := mmu.io.paddr
   io.icache.req.bits.data := 0.U
@@ -252,29 +253,38 @@ class Datapath(val conf: CoreConfig) extends Module {
   )
   alu.io.alu_op := io.ctrl.alu_op
 
-  printf("ALU  : %x <> %x <> %x <> %x\n" +
-    "DATA : %x <> %x <> %x\n" +
-    "RS1&2: %x <> %x \n",
-    alu.io.A , alu.io.B , alu.io.out, alu.io.sum ,
-    regFile.io.rdata1 , regFile.io.rdata2 , immGen.io.out,
-    rs1 , rs2)
-    // Branch condition calc
+//  printf("ALU  : %x <> %x <> %x <> %x\n" +
+//    "DATA : %x <> %x <> %x\n" +
+//    "RS1&2: %x <> %x \n",
+//    alu.io.A , alu.io.B , alu.io.out, alu.io.sum ,
+//    regFile.io.rdata1 , regFile.io.rdata2 , immGen.io.out,
+//    rs1 , rs2)
+
+  // Branch condition calc
   brCond.io.rs1 := rs1
   brCond.io.rs2 := rs2
   brCond.io.br_type := io.ctrl.br_type
 
   // D$ access
-  val daddr = Mux(stall, ew_reg.alu, alu.io.sum) >> 2.U << 2.U
-  val woffset = (alu.io.sum(1) << 4.U).asUInt | (alu.io.sum(0) << 3.U).asUInt
+  val daddr = Mux(stall, ew_reg.alu, alu.io.sum)
   io.dcache.req.valid := !stall && (io.ctrl.st_type.orR || io.ctrl.ld_type.orR)
   io.dcache.req.bits.addr := daddr
-  io.dcache.req.bits.data := rs2 << woffset
+  io.dcache.req.bits.data := rs2
   io.dcache.req.bits.mask := MuxLookup(
     Mux(stall, st_type, io.ctrl.st_type),
     "b0000".U,
-    Seq(ST_SW -> "b1111".U, ST_SH -> ("b11".U << alu.io.sum(1, 0)), ST_SB -> ("b1".U << alu.io.sum(1, 0)))
+    Seq(ST_SW -> "b1111".U, ST_SH -> "b0011".U, ST_SB -> "b0001".U)
   )
-  io.dcache.direct_en := false.B
+  io.dcache.direct_en := true.B
+
+  printf(
+    "Target Addr : %x (Alu : ) %x\n" +
+    "Resp: %x , %x\n" +
+    "Req : %x , %x\n",
+    ew_reg.alu , alu.io.out ,
+    io.icache.resp.valid , io.dcache.resp.valid,
+    io.icache.req.valid  , io.dcache.req.valid
+  )
 
   // Pipelining
   when(reset.asBool || !stall && csr.io.expt) {
@@ -301,16 +311,15 @@ class Datapath(val conf: CoreConfig) extends Module {
 
   // Load
   // 对load取出的数据进行修改(位扩展)
-  val loffset = (ew_reg.alu(1) << 4.U).asUInt | (ew_reg.alu(0) << 3.U).asUInt
-  val lshift = io.dcache.resp.bits.data >> loffset
+  val lshift = io.dcache.resp.bits.data
   val load = MuxLookup(
     ld_type,
-    io.dcache.resp.bits.data.zext,
+    lshift.zext,
     Seq(
-      LD_LH -> lshift(15, 0).asSInt,
-      LD_LB -> lshift(7, 0).asSInt,
+      LD_LH  -> lshift(15, 0).asSInt,
+      LD_LB  -> lshift(7 , 0).asSInt,
       LD_LHU -> lshift(15, 0).zext,
-      LD_LBU -> lshift(7, 0).zext
+      LD_LBU -> lshift(7 , 0).zext
     )
   )
 
@@ -345,7 +354,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   printf("PC_LINE : %x ---  %x --- %x\n" ,pc , fe_reg.pc , ew_reg.pc)
 
   io.debug.wb_pc := ew_reg.pc
-  io.debug.wb_rf_wen := wb_en.asUInt
+  io.debug.wb_rf_wen := wb_en && !stall
   io.debug.wb_rf_wnum := wb_rd_addr
   io.debug.wb_rf_wdata := regWrite
 

@@ -74,6 +74,7 @@ class MemArbiter(params: NastiBundleParameters) extends Module {
   // .fire() target.ready && target.valid 表示握手成功
   switch(state) {
     is(sIdle) {
+      printf("INFO sIdle\n")
       when(io.dcache.aw.fire) {
         state := sDCacheWrite
       }.elsewhen(io.dcache.ar.fire) {
@@ -83,11 +84,19 @@ class MemArbiter(params: NastiBundleParameters) extends Module {
       }
     }
     is(sICacheRead) {
+      printf("INFO sICacheRead __ MemValid : %x __ IcacheReady : %x\n" +
+             "                 __ MemData  : %x\n",
+        io.nasti.r.valid , io.icache.r.ready , io.nasti.r.bits.data)
+
       when(io.nasti.r.fire && io.nasti.r.bits.last) {
         state := sIdle
       }
     }
     is(sDCacheRead) {
+      printf("INFO sDCacheRead __ MemValid : %x __ DcacheReady : %x\n" +
+        "                      __ MemData  : %x\n",
+        io.nasti.r.valid , io.dcache.r.ready , io.nasti.r.bits.data)
+
       when(io.nasti.r.fire && io.nasti.r.bits.last) {
         state := sIdle
       }
@@ -98,6 +107,8 @@ class MemArbiter(params: NastiBundleParameters) extends Module {
       }
     }
     is(sDCacheAck) {
+      printf("INFO sDCacheAck\n")
+
       when(io.nasti.b.fire) {
         state := sIdle
       }

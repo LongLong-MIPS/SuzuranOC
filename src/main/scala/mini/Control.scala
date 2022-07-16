@@ -11,9 +11,9 @@ object Control {
 
   // pc_sel
   // 决定下一条指令的方式
-  val PC_4 = 0.U(2.W)//pc+1
+  val PC_4   = 0.U(2.W)//pc+1
   val PC_ALU = 1.U(2.W)//pc=alu
-  val PC_0 = 2.U(2.W)//pc=pc
+  val PC_0   = 2.U(2.W)//pc=pc
   val PC_EPC = 3.U(2.W)
 
   // A_sel
@@ -135,9 +135,9 @@ object Control {
   LH    -> List(PC_0  , A_RS1,  B_IMM, IMM_I, ALU_ADD   , BR_XXX, Y, ST_XXX, LD_LH , WB_MEM, Y, CSR.N, N),//从存储器中读取一个16位数值,进行符号扩展到32位,再保存到rd中
   LHU   -> List(PC_0  , A_RS1,  B_IMM, IMM_I, ALU_ADD   , BR_XXX, Y, ST_XXX, LD_LHU, WB_MEM, Y, CSR.N, N),//从存储器中读取一个16位数值,进行零扩展到32位,再保存到rd中
   LW    -> List(PC_0  , A_RS1,  B_IMM, IMM_I, ALU_ADD   , BR_XXX, Y, ST_XXX, LD_LW , WB_MEM, Y, CSR.N, N),//从存储器中读取一个32位数值保存到rd中
-  SB    -> List(PC_4  , A_RS1,  B_IMM, IMM_S, ALU_ADD   , BR_XXX, N, ST_SB , LD_XXX, WB_ALU, N, CSR.N, N),//从rs2取8位数值，保存到存储器中
-  SH    -> List(PC_4  , A_RS1,  B_IMM, IMM_S, ALU_ADD   , BR_XXX, N, ST_SH , LD_XXX, WB_ALU, N, CSR.N, N),//从rs2取16位数值，保存到存储器中
-  SW    -> List(PC_4  , A_RS1,  B_IMM, IMM_S, ALU_ADD   , BR_XXX, N, ST_SW , LD_XXX, WB_ALU, N, CSR.N, N),//从rs2取32位数值，保存到存储器中
+  SB    -> List(PC_4  , A_RS1,  B_IMM, IMM_I, ALU_ADD   , BR_XXX, N, ST_SB , LD_XXX, WB_ALU, N, CSR.N, N),//从rs2取8位数值，保存到存储器中
+  SH    -> List(PC_4  , A_RS1,  B_IMM, IMM_I, ALU_ADD   , BR_XXX, N, ST_SH , LD_XXX, WB_ALU, N, CSR.N, N),//从rs2取16位数值，保存到存储器中
+  SW    -> List(PC_4  , A_RS1,  B_IMM, IMM_I, ALU_ADD   , BR_XXX, N, ST_SW , LD_XXX, WB_ALU, N, CSR.N, N),//从rs2取32位数值，保存到存储器中
   //特权指令
   ERET  -> List(PC_EPC, A_XXX,  B_XXX, IMM_X, ALU_XXX   , BR_XXX, Y, ST_XXX, LD_XXX, WB_CSR, N, CSR.P, N),
 //  MFC0
