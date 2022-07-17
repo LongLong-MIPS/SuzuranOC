@@ -189,9 +189,9 @@ class Control extends Module {
   io.csr_cmd := ctrlSignals(11)
   io.illegal := ctrlSignals(12)
 
-  printf("|pc_sel\t|A_sel\t|B_sel\t|imm_sel|alu_op\t|wb_sel|\n"+
-         "|%x    \t|%x   \t|%x   \t|%x     \t|%x  \t|%x|\n",
-    io.pc_sel, io.A_sel,io.B_sel,io.imm_sel,io.alu_op,io.wb_sel
-  )
+//  printf("|pc_sel\t|A_sel\t|B_sel\t|imm_sel|alu_op\t|wb_sel|\n"+
+//         "|%x    \t|%x   \t|%x   \t|%x     \t|%x  \t|%x|\n",
+//    io.pc_sel, io.A_sel,io.B_sel,io.imm_sel,io.alu_op,io.wb_sel
+//  )
 
 }

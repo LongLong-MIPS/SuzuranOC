@@ -93,13 +93,15 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
     stop()
   }
 
+  val MEM_OFFSET = 0x1FC00000.U
+
   /** 内存状态机的实现 */
   switch(state) {
     is(sIdle) {
       /** 1. 内存处于空闲状态，接收到TILE的写入请求valid信号 */
       when(dut.io.nasti.aw.valid) {
         assert((1.U << dut.io.nasti.aw.bits.size).asUInt === (nasti.dataBits / 8).U)
-        addr  := dut.io.nasti.aw.bits.addr / (nasti.dataBits / 8).U
+        addr  := dut.io.nasti.aw.bits.addr / (nasti.dataBits / 8).U - MEM_OFFSET
         id    := dut.io.nasti.aw.bits.id
         len   := dut.io.nasti.aw.bits.len
         off   := 0.U
@@ -108,7 +110,7 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
         /** 2. 内存处于空闲状态，接受到TILE的读取请求valid信号 */
       }.elsewhen(dut.io.nasti.ar.valid) {
         assert((1.U << dut.io.nasti.ar.bits.size).asUInt === (nasti.dataBits / 8).U)
-        addr  := dut.io.nasti.ar.bits.addr / (nasti.dataBits / 8).U // ?
+        addr  := dut.io.nasti.ar.bits.addr / (nasti.dataBits / 8).U - MEM_OFFSET// ?
         id    := dut.io.nasti.ar.bits.id
         len   := dut.io.nasti.ar.bits.len
         off   := 0.U
@@ -149,7 +151,7 @@ class TileTester(tile: => Tile, benchmark: String, latency: Int = 8, trace: Bool
   when( dut.io.debug.wb_rf_wen.orR  && dut.io.debug.wb_rf_wnum.orR) {
     printf("INFO %d %x %x %x\n" ,
       dut.io.debug.wb_rf_wen ,
-      dut.io.debug.wb_pc ,
+      dut.io.debug.wb_pc,
       dut.io.debug.wb_rf_wnum,
       dut.io.debug.wb_rf_wdata)
   }

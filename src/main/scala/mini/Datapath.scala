@@ -7,11 +7,10 @@ import junctions.{DebugBundle, NastiBundle, NastiBundleParameters}
 
 // PC_START定义为0x200 定义为cpu上电运行的第一条指令地址
 // PC_EVEC 0x100定义为 cpu异常运行的指令起始地址
-object Const {
-  val PC_START = 0x4
-  //val PC_START = 0x200
-  //val PC_START = 0xBFC00000
-  val PC_EVEC  = 0x100
+object CONST {
+  //val PC_START = 0x4
+  val PC_START = 0xBFC00000L
+  val PC_EVEC  = 0xBFC00380L
 
   val JUMP_REG = 0x1F
 
@@ -43,13 +42,13 @@ case class VaddrArbiter(xlen : Int) extends Module {
   io.mapped_en := true.B
 
   switch(tag) {
-    is(Const.KSEG0_TAG.U) {
-      io.paddr := io.vaddr & Const.ADDR_MASK.U
+    is(CONST.KSEG0_TAG.U) {
+      io.paddr := io.vaddr & CONST.ADDR_MASK.U
       io.cached_en := true.B
       io.mapped_en := false.B
     }
-    is(Const.KSEG1_TAG.U) {
-      io.paddr := io.vaddr & Const.ADDR_MASK.U
+    is(CONST.KSEG1_TAG.U) {
+      io.paddr := io.vaddr & CONST.ADDR_MASK.U
       io.cached_en := false.B
       io.mapped_en := false.B
     }
@@ -141,7 +140,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   // stall : stop signal——停机信号 暂停流水线
   // cache冲突，暂停
   val stall = !io.icache.resp.valid || !io.dcache.resp.valid
-  val pc = RegInit(Const.PC_START.U(conf.xlen.W) - 4.U(conf.xlen.W)) //注意Line.116 icache连接的是next_pc
+  val pc = RegInit(CONST.PC_START.U(conf.xlen.W) - 4.U(conf.xlen.W)) //注意Line.116 icache连接的是next_pc
   // Next Program Counter
   val next_pc = MuxCase(
     pc + 4.U,
@@ -170,14 +169,17 @@ class Datapath(val conf: CoreConfig) extends Module {
 
   mmu.io.vaddr := next_pc
 
-    printf("VADDR : %x == %x \n" +
-        "Cond : %x %x %x %x %x\n" +
-        "IS_Stall : %x \n" +
-        "INST : %x \n" ,
-      next_pc , pc ,
-      started , io.ctrl.inst_kill , brCond.io.taken , csr.io.expt , io.ctrl.pc_sel ,
-      stall,
-      fe_reg.inst)
+  when(!stall) {
+    printf("TRACE Inst : %x\n" ,fe_reg.inst)
+  }
+//    printf("VADDR : %x == %x \n" +
+//        "Cond : %x %x %x %x %x\n" +
+//        "IS_Stall : %x \n" +
+//        "INST : %x \n" ,
+//      next_pc , pc ,
+//      started , io.ctrl.inst_kill , brCond.io.taken , csr.io.expt , io.ctrl.pc_sel ,
+//      stall,
+//      fe_reg.inst)
 
   io.icache.req.bits.addr := mmu.io.paddr
   io.icache.req.bits.data := 0.U
@@ -222,11 +224,11 @@ class Datapath(val conf: CoreConfig) extends Module {
     * (3) WAR(write after read) (Out-Of-Order)
     *     add x5, x4*, x6
     *     add x4*, x3, x2
-    */ 
+    */
   //??????????????
   val wb_rd_addr = Mux(
     wb_sel === WB_PC8,
-    Const.JUMP_REG.U(5.W) ,
+    CONST.JUMP_REG.U(5.W) ,
     Mux(
       ew_reg.imm_sel === IMM_X || ew_reg.imm_sel === IMM_S,
       ew_reg.inst(15, 11),
@@ -277,14 +279,14 @@ class Datapath(val conf: CoreConfig) extends Module {
   )
   io.dcache.direct_en := true.B
 
-  printf(
-    "Target Addr : %x (Alu : ) %x\n" +
-    "Resp: %x , %x\n" +
-    "Req : %x , %x\n",
-    ew_reg.alu , alu.io.out ,
-    io.icache.resp.valid , io.dcache.resp.valid,
-    io.icache.req.valid  , io.dcache.req.valid
-  )
+//  printf(
+//    "Target Addr : %x (Alu : ) %x\n" +
+//    "Resp: %x , %x\n" +
+//    "Req : %x , %x\n",
+//    ew_reg.alu , alu.io.out ,
+//    io.icache.resp.valid , io.dcache.resp.valid,
+//    io.icache.req.valid  , io.dcache.req.valid
+//  )
 
   // Pipelining
   when(reset.asBool || !stall && csr.io.expt) {
@@ -351,7 +353,7 @@ class Datapath(val conf: CoreConfig) extends Module {
   regFile.io.waddr := wb_rd_addr
   regFile.io.wdata := regWrite
 
-  printf("PC_LINE : %x ---  %x --- %x\n" ,pc , fe_reg.pc , ew_reg.pc)
+  //printf("PC_LINE : %x ---  %x --- %x\n" ,pc , fe_reg.pc , ew_reg.pc)
 
   io.debug.wb_pc := ew_reg.pc
   io.debug.wb_rf_wen := wb_en && !stall
@@ -361,6 +363,6 @@ class Datapath(val conf: CoreConfig) extends Module {
   // Abort store when there's an exception
   io.dcache.abort := csr.io.expt
 
-  printf("---------------------------\n\n")
+  //printf("---------------------------\n\n")
 
 }

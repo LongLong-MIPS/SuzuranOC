@@ -26,44 +26,9 @@ __铃兰小姐是我们的光!__
 ## 一.关于语言方面的准备
 
 首先需要学习的是基本的硬件描述语言（HDL）verilog:
-1.  https://verilogoj.ustc.edu.cn/oj/ -> 中科大的VerilogOJ，基本上跟着走下来能掌握大部分语法
+1. https://verilogoj.ustc.edu.cn/oj/ -> 中科大的VerilogOJ，基本上跟着走下来能掌握大部分语法
 
-2. 另外这个项目中的`src`文件夹中有一个`Hello world`程序，具体食用的方式如下所示
-（不过事先说明一下，这一套也不是很有必要......因为最终还是要使用`Vivado`或者`Quartus`这种EDA进行仿真与开发，各种体验完爆这种烂怂脚手架的，因此有条件的话直接上`Vivado`跳过这些=。=）：
-
-	首先是仿真环境的配置:
-
-	|||
-	|---|---|
-	|虚拟机系统|Ubuntu20.04|
-	|仿真器|Iverilog|
-	|编辑器|VSCode|
-	|波形查看|WaveTrace|
-
-
-	**Note 1:** `WaveTrace`是Vscode的一个插件，在插件商店直接搜索即可<-这玩意`pro`要$15...第三世界真的不配了)
-
-	**Note 2:** `iverilog`也可以在`Windows`下食用，具体的安装方法~~Google~~`Baidu`一下即可。但是运行
-
-	**Note 3:** `iverilog`的错误提示不怎么友好，而且年久失修，也推荐尝试一下`Verilator`
-
-	配置好运行环境后，在`src`目录下通过下面命令可以食用`Hello World`
-	* i. 生成二进制文件（姑且称之为编译）
-	```verilog
-	iverilog adder_tb.v adder.v
-	```
-	* ii. 运行二进制文件(Linux环境下的运行，Windows下应该有所出入)
-	```verilog
-	./a.out
-	```
-	这时已经可以看到控制台中输出了有关的监视信息
-
-	* iii. 在`vscode`中打开`tb_adder.vcd`即可查看波形（也可以使用`GTKWave`）
-	
-	有关更多信息可以参阅 https://zhuanlan.zhihu.com/p/148795858 ，以及别忘记`STFW`. : )
-
-
-3. 在学习`verilog`的基础上，我们也可以尝试一下其他高级语言如`SpitalHDL`或者`Chisel`，他们相较于~~腐朽的~~`verilog`更加现代，~~据说~~使用起来更加便捷，但是仍然存在学习成本，因此最终要不要采用该方案需要咱们进一步探讨。
+2. 项目确定 采用`Chisel3`进行开发，采用`JDK11`，推荐`IDEA`作为开发环境
 
 ## 二、体系结构的有关资料
 1. 这里的`体系结构`更多指的是宏观上总体设计，涉及计算机的方方面面。首先需要提及的就是`计算机组成原理`这门课程中的所有基础知识。
@@ -83,14 +48,16 @@ __铃兰小姐是我们的光!__
 1. 这里的CPU核心设计主要指的是流水线设计、指令系统（RISC/MIPS）、分支预测器、ALU（乘法器除法器浮点运算）等等在内。另外，虽然叫做“核心”，但是这只是我们项目中的一部分，甚至不能
    
 2. 书籍`《超标量流水线设计》` : (暂无地址) -> 小有名气的一本书，基本上能覆盖我们项目的很大一部分
-   
-3. `CQU`流水线设计：https://www.bilibili.com/video/BV1pK4y1C7es ->这个项目实现了一个~~小学二年级水平~~的多周期五级流水线CPU，并处理了三种冒险问题。这个难度就是我们暑期课设的要求。可`RTFSC`
-   
-4. `TINY-RISCV` ：https://gitee.com/liangkangnan/tinyriscv -> `RISC-V`的一个开源项目，能运行完整可执行程序。`RISC-V`与`MIPS`同属于`RISC`体系，从指令集的角度来看差异真不大，所以这方面的知识是可以通用的。
 
-5. `蜂鸟e203` ：https://github.com/riscv-mcu/e203_hbirdv2 -> 商用级别的开源核，可以选择性查看
+3. [B站视频一份](https://www.bilibili.com/video/BV1VE411o7nx?p=20)
    
-6. `BOOM` ：https://github.com/riscv-boom/riscv-boom -> 天花板级别的开源核，水平不够难以评价。
+4. `CQU`流水线设计：https://www.bilibili.com/video/BV1pK4y1C7es ->这个项目实现了一个~~小学二年级水平~~的多周期五级流水线CPU，并处理了三种冒险问题。这个难度就是我们暑期课设的要求。可`RTFSC`
+   
+5. `TINY-RISCV` ：https://gitee.com/liangkangnan/tinyriscv -> `RISC-V`的一个开源项目，能运行完整可执行程序。`RISC-V`与`MIPS`同属于`RISC`体系，从指令集的角度来看差异真不大，所以这方面的知识是可以通用的。
+
+6. `蜂鸟e203` ：https://github.com/riscv-mcu/e203_hbirdv2 -> 商用级别的开源核，可以选择性查看
+   
+7. `BOOM` ：https://github.com/riscv-boom/riscv-boom -> 天花板级别的开源核，水平不够难以评价。
 
 ## 四、Cache的设计
 1. Cache部分可以说是拉动性能分的主力了。
@@ -98,7 +65,7 @@ __铃兰小姐是我们的光!__
 2. 施工中......
 
 ## 五、AXI总线及外设的设计
-1. 施工中......
+1. AXI总线为片上总线，并非和外设总线相等。这部分内容可以参阅官方手册，
 
 ## 六、TLB虚拟内存方面的设计
 1. 施工中......

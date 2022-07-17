@@ -307,10 +307,10 @@ class ThroughCache(
   valid_reg := io.cpu.req.valid
 
 
-  printf("DEBUG cache status : \n" +
-  "\tDirect : %x; Valid : %x; State : %x \n",
-    switch_reg , valid_reg , state.asUInt
-  )
+//  printf("DEBUG cache status : \n" +
+//  "\tDirect : %x; Valid : %x; State : %x \n",
+//    switch_reg , valid_reg , state.asUInt
+//  )
 
   when(!switch_reg) {
     io.nasti <> cache.io.nasti
@@ -343,8 +343,8 @@ class ThroughCache(
           state := sReadCache
         }
         when(valid_reg &&  mask_reg.orR) {
-          printf("DEBUG Direct write : %x ; size : %x ; mask : %x\n",
-            io.cpu.req.bits.addr , io.nasti.aw.bits.size , mask_reg);
+//          printf("DEBUG Direct write : %x ; size : %x ; mask : %x\n",
+//            io.cpu.req.bits.addr , io.nasti.aw.bits.size , mask_reg);
 
           state := sWriteCache
         }

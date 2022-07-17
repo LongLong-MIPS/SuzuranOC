@@ -10,9 +10,9 @@ class LoongsonTests extends AnyFlatSpec with ChiselScalatestTester{
 
 
   val c = LoongConfig()
-//  it should "inst_ram" in {
-//    test(new TileTester(Tile(c),"inst_ram")).runUntilStop(1000)
-//  }
+  it should "inst_ram" in {
+    test(new TileTester(Tile(c),"inst_ram")).runUntilStop(10000)
+  }
 
   behavior of "self test-cases"
 
