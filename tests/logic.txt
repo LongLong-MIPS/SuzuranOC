@@ -1,0 +1,9 @@
+addi $1 $0 0xFFFF
+andi $1 $1 0xAAAA
+ori $1 $1 0x5   #0000 aaaf
+lui $2 0xDDDD
+xori $2 $2 0xA  #dddd 000a
+and $3 $1 $2    #0000 000a
+nor $4 $1 $2    #2222 5550
+or $5 $1 $2     #dddd aaaf
+xor $6 $1 $2    #dddd aaa5

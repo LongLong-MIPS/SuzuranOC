@@ -1,0 +1,7 @@
+addi $1 $0 0x000A
+addi $2 $0 0x0003
+addi $3 $0 0xFFFA
+slt $4 $1 $2        #0
+slti $4 $1 0xFFFF   #0
+sltu $4 $1 $3         #1
+sltiu $4 $1 0x0001 #0

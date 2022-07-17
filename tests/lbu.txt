@@ -1,0 +1,11 @@
+lw $1 0x20($0)
+lw $2 0x24($0)
+addi $1 $1 0x1 # 12ab cdf0
+lb $3 0x28($0)
+lbu $4 0x28($0)
+lh $5 0x2c($0)
+lhu $6 0x2c($0)
+12ABCDEF #20
+3456789A #24
+FAFBFAFB #28
+FAFBFCFD #2c
